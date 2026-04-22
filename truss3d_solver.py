@@ -3,7 +3,6 @@ import numpy as np
 
 DOF_MAP = {"ux": 0, "uy": 1, "uz": 2}
 
-
 def _as_array_per_element(value, n_elem):
     arr = np.asarray(value, dtype=float)
     if arr.ndim == 0:
