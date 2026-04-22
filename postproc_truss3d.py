@@ -40,6 +40,104 @@ def _load_arrow_scale(V, loads):
     return 0.18 * span / max_mag
 
 
+def summarize_case(name, result):
+    max_u = result["max_u"]
+    stress = result["stress"]
+    max_abs_stress = np.max(np.abs(stress))
+    print(f"\n{name}")
+    print(f"  max nodal deflection magnitude: {max_u:.6e} ft")
+    print(f"  element stress range: [{np.min(stress):.6e}, {np.max(stress):.6e}] Pa")
+    print(f"  max |element stress|: {max_abs_stress:.6e} Pa")
+
+
+def deformation_scale(V, U_nodes):
+    max_u = np.max(np.linalg.norm(U_nodes, axis=1))
+    if max_u <= 0:
+        return 1.0
+    char_len = max(np.ptp(V[:, 0]), np.ptp(V[:, 1]), np.ptp(V[:, 2]))
+    char_len = max(float(char_len), 1.0)
+    return 0.15 * char_len / max_u
+
+
+def write_case_outputs(out_dir, case_tag, E2N, out):
+    n_nodes = out["U_nodes"].shape[0]
+    node_ids = np.arange(n_nodes, dtype=int)
+    node_table = np.column_stack([node_ids, out["U_nodes"], out["u_mag"]])
+    node_header = "node,ux_ft,uy_ft,uz_ft,u_mag_ft"
+    np.savetxt(
+        out_dir / f"{case_tag}_node_displacements.csv",
+        node_table,
+        delimiter=",",
+        header=node_header,
+        comments="",
+        fmt=["%d", "%.8e", "%.8e", "%.8e", "%.8e"],
+    )
+
+    elem_ids = np.arange(E2N.shape[0], dtype=int)
+    elem_table = np.column_stack([elem_ids, E2N[:, 0], E2N[:, 1], out["strain"], out["stress"]])
+    elem_header = "element,node_i,node_j,strain,stress_pa"
+    np.savetxt(
+        out_dir / f"{case_tag}_element_results.csv",
+        elem_table,
+        delimiter=",",
+        header=elem_header,
+        comments="",
+        fmt=["%d", "%d", "%d", "%.8e", "%.8e"],
+    )
+
+    with open(out_dir / f"{case_tag}_summary.txt", "w", encoding="utf-8") as f:
+        f.write(f"max_nodal_deflection_ft={out['max_u']:.8e}\n")
+        f.write(f"min_element_stress_pa={np.min(out['stress']):.8e}\n")
+        f.write(f"max_element_stress_pa={np.max(out['stress']):.8e}\n")
+        f.write(f"max_abs_element_stress_pa={np.max(np.abs(out['stress'])):.8e}\n")
+
+
+def plot_hex_2D(co, e, out_path=None, show=False):
+    co_2d = co[:, :2]
+    fig, ax = plt.subplots()
+    x = co_2d[e, 0].T
+    y = co_2d[e, 1].T
+    ax.plot(x, y, "k-", lw=1.5)
+    ax.plot(co_2d[:, 0], co_2d[:, 1], "ko", ms=5)
+
+    for i, (xn, yn) in enumerate(co_2d):
+        ax.annotate(
+            f"N{i}: ({xn:.1f}, {yn:.1f})",
+            xy=(xn, yn),
+            xytext=(6, 6),
+            textcoords="offset points",
+            fontsize=8,
+            color="b",
+        )
+
+    mid = co_2d[e].mean(axis=1)
+    for k, (xm, ym) in enumerate(mid):
+        ax.annotate(
+            f"E{k}",
+            xy=(xm, ym),
+            xytext=(4, 4),
+            textcoords="offset points",
+            ha="center",
+            va="center",
+            fontsize=8,
+            color="r",
+        )
+
+    ax.set_aspect("equal", adjustable="box")
+    ax.set_xlabel("x (ft)")
+    ax.set_ylabel("y (ft)")
+    ax.set_title("2D Hex Truss")
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+
+    if out_path is not None:
+        fig.savefig(out_path, format="svg")
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)
+
+
 def plot_truss_with_bcs_loads_3d(V, E2N, bcs, loads, ax=None, title="Truss with BCs and Loads"):
     if ax is None:
         fig = plt.figure()
@@ -133,4 +231,3 @@ def plot_deformed_stress_truss_3d(
     _set_axes_equal_3d(ax, np.vstack([V, V_def]))
     _style_3d_axes_clean(ax)
     return ax
-
