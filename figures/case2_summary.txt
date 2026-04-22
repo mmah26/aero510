@@ -1,4 +1,4 @@
-max_nodal_deflection_ft=4.12360082e-05
-min_element_stress_pa=-1.03684836e-11
-max_element_stress_pa=2.18541264e+03
-max_abs_element_stress_pa=2.18541264e+03
+max_nodal_deflection_ft=5.38276984e-06
+min_element_stress_pa=-1.36056791e+04
+max_element_stress_pa=2.14518924e+04
+max_abs_element_stress_pa=2.14518924e+04

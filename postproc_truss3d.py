@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Line3DCollection
 from matplotlib.ticker import FormatStrFormatter
+from matplotlib.lines import Line2D
 
 
 def _set_axes_equal_3d(ax, pts):
@@ -38,6 +39,17 @@ def _load_arrow_scale(V, loads):
     mags = [np.linalg.norm(np.asarray(ld["value"], dtype=float)) for ld in loads]
     max_mag = max(float(np.max(mags)), 1.0)
     return 0.18 * span / max_mag
+
+
+def _bc_label_from_dofs(dof_set):
+    # dof_set entries are {'ux','uy','uz'} etc.
+    order = [("ux", "x"), ("uy", "y"), ("uz", "z")]
+    comps = [sym for key, sym in order if key in dof_set]
+    if len(comps) == 0:
+        return None
+    if len(comps) == 1:
+        return rf"$u_{{{comps[0]}}}=0$"
+    return rf"$u_{{{','.join(comps)}}}=0$"
 
 
 def summarize_case(name, result):
@@ -101,8 +113,9 @@ def plot_hex_2D(co, e, out_path=None, show=False):
     ax.plot(co_2d[:, 0], co_2d[:, 1], "ko", ms=5)
 
     for i, (xn, yn) in enumerate(co_2d):
+        zn = co[i, 2] if co.shape[1] > 2 else 0.0
         ax.annotate(
-            f"N{i}: ({xn:.1f}, {yn:.1f})",
+            f"N{i}: ({xn:.1f}, {yn:.1f}, {zn:.1f})",
             xy=(xn, yn),
             xytext=(6, 6),
             textcoords="offset points",
@@ -151,7 +164,29 @@ def plot_truss_with_bcs_loads_3d(V, E2N, bcs, loads, ax=None, title="Truss with 
     # Node labels (slightly offset in +z for readability)
     zoff = max(0.02 * np.max(np.ptp(V, axis=0)), 1e-3)
     for i, (x, y, z) in enumerate(V):
-        ax.text(x, y, z + zoff, f"N{i}", color="k", fontsize=8)
+        ax.text(x, y, z + zoff, f"N{i}", color="k", fontsize=8, zorder=20)
+
+    # Element labels at midpoints, slight +z offset.
+    mids = segs.mean(axis=1)
+    for k, (xm, ym, zm) in enumerate(mids):
+        ax.text(xm, ym, zm + 0.45 * zoff, f"E{k}", color="m", fontsize=8, zorder=20)
+
+    # BC labels from case setup dict, offset in -z to avoid node-label overlap.
+    bc_by_node = {}
+    for bc in bcs:
+        if bc.get("type", "dirichlet") != "dirichlet":
+            continue
+        node = int(bc["node"])
+        dof = bc.get("dof")
+        if dof is None:
+            continue
+        bc_by_node.setdefault(node, set()).add(dof)
+    for node, dof_set in bc_by_node.items():
+        label = _bc_label_from_dofs(dof_set)
+        if label is None:
+            continue
+        x, y, z = V[node]
+        ax.text(x, y, z - 3.8 * zoff, label, color="b", fontsize=8, zorder=20)
 
     p_loads = [ld for ld in loads if np.linalg.norm(np.asarray(ld["value"], dtype=float)) > 0]
     q_scale = _load_arrow_scale(V, p_loads)
@@ -213,7 +248,19 @@ def plot_deformed_stress_truss_3d(
     # Node labels at displaced node locations (offset in +z for readability)
     zoff = max(0.02 * np.max(np.ptp(V_def, axis=0)), 1e-3)
     for i, (x, y, z) in enumerate(V_def):
-        ax.text(x, y, z + zoff, f"N{i}", color="k", fontsize=8)
+        ax.text(x, y, z + zoff, f"N{i}", color="k", fontsize=8, zorder=20)
+
+    # Element labels at displaced midpoints, slight +z offset.
+    mids = segd.mean(axis=1)
+    for k, (xm, ym, zm) in enumerate(mids):
+        ax.text(xm, ym, zm + 0.45 * zoff, f"E{k}", color="m", fontsize=8, zorder=20)
+
+    # Max stress info in legend (upper-left), instead of midpoint annotation.
+    idx_max = int(np.argmax(np.abs(s)))
+    sigma_at_max_mag = float(s[idx_max])
+    legend_text = rf"$\sigma_{{max}}={sigma_at_max_mag:.3e}\ \mathrm{{Pa}}$ at E{idx_max}"
+    legend_handle = Line2D([], [], linestyle="None", label=legend_text)
+    ax.legend(handles=[legend_handle], loc="upper left", fontsize=8, frameon=True)
 
     cbar = plt.colorbar(lcd, ax=ax, pad=0.12, fraction=0.04, shrink=0.82, aspect=24)
     cbar.set_label("Axial Stress [Pa]")
