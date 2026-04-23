@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.tri as mtri
 from matplotlib.lines import Line2D
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from matplotlib.ticker import FormatStrFormatter
 
 
 def summarize_case(name, out):
@@ -205,7 +206,7 @@ def plot_undeformed_mesh(xy, conn, case, out_path):
 
     xmin, xmax = float(np.min(xy[:, 0])), float(np.max(xy[:, 0]))
     dx = max(xmax - xmin, 1e-12)
-    ax.set_xlim(xmin - 0.05 * dx, xmax + 0.05 * dx)
+    ax.set_xlim(xmin - 0.04 * dx, xmax + 0.04 * dx)
     ax.set_ylim(-0.2, 0.2)
     _style_axes(ax)
     ax.set_title(f"{case['name']}: Undeformed Mesh")
@@ -235,9 +236,10 @@ def plot_deformed_mesh(xy, conn, U_nodes, title, out_path, scale=None):
     fig, ax = plt.subplots(figsize=(8, 3.0))
     _plot_mesh_lines(ax, xy, conn, color="0.70", lw=0.7)
     _plot_mesh_lines(ax, xy_def, conn, color="tab:red", lw=0.9)
-    xmin, xmax = float(np.min(xy[:, 0])), float(np.max(xy[:, 0]))
+    x_all = np.concatenate([xy[:, 0], xy_def[:, 0]])
+    xmin, xmax = float(np.min(x_all)), float(np.max(x_all))
     dx = max(xmax - xmin, 1e-12)
-    ax.set_xlim(xmin - 0.05 * dx, xmax + 0.05 * dx)
+    ax.set_xlim(xmin - 0.04 * dx, xmax + 0.04 * dx)
     ax.set_ylim(y_min_lim, y_max_lim)
     handles = [
         Line2D([0], [0], color="0.70", lw=1.2, label="undeformed"),
@@ -259,6 +261,8 @@ def plot_stress_contour(xy, conn, nodal_scalar_pa, label, title, out_path, cmap=
 
     cbar = plt.colorbar(tcf, ax=ax, orientation="horizontal", pad=0.22, fraction=0.08)
     cbar.set_label(label)
+    cbar.ax.xaxis.set_major_formatter(FormatStrFormatter("%.2e"))
+    cbar.update_ticks()
 
     _style_axes(ax)
     ax.set_title(title)
@@ -306,6 +310,8 @@ def plot_stress_stack(
         cax = divider.append_axes("bottom", size="22%", pad=0.55)
         cbar = fig.colorbar(contour_ref, cax=cax, orientation="horizontal")
         cbar.set_label("Pa")
+        cbar.ax.xaxis.set_major_formatter(FormatStrFormatter("%.2e"))
+        cbar.update_ticks()
 
     fig.suptitle(case_title, fontsize=12)
     fig.savefig(out_path, dpi=200, bbox_inches="tight")

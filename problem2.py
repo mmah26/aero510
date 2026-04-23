@@ -16,8 +16,8 @@ xy, conn = gen_quad_mesh(L, W, nx, ny)
 
 # Edge traction magnitude used for all cases as line load (N/m).
 # Equivalent to 1 MPa pressure acting over panel thickness: q = p * t.
-p_ref = 1.0e6  # Pa
-tmag = p_ref * t  # N/m
+P_ref = 1.0e6  # Pa
+tmag = P_ref * t  # N/m
 
 """
 Case 1:
