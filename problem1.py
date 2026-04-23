@@ -18,7 +18,7 @@ hub_z_shift = - 2 / 12
 V, E2N = hex_geometry(hub_z=hub_z_shift, rim_z=0.0)
 A = truss_areas(E2N)
 E = E_al
-out_dir = Path(__file__).resolve().parent / "figures"
+out_dir = Path(__file__).resolve().parent / "figures" / "truss"
 out_dir.mkdir(parents=True, exist_ok=True)
 plot_hex_2D(V, E2N, out_path=out_dir / "hex_2D.svg", show=False)
 
