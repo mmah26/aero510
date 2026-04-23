@@ -1,0 +1,8 @@
+E1_pa=1.45848000e+11
+E2_pa=1.59025903e+10
+G12_pa=4.33907729e+09
+nu12=2.72000000e-01
+best_case1_theta_deg=0.0
+best_case1_max_vm_pa=1.00304396e+06
+best_arbitrary_theta_deg=65.0
+best_arbitrary_worst_vm_pa=3.50785643e+07

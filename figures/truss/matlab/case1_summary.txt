@@ -1,0 +1,5 @@
+max_nodal_deflection_m=3.20979621e-05
+min_element_stress_pa=0.00000000e+00
+max_element_stress_pa=1.21277718e+05
+max_abs_element_stress_pa=1.21277718e+05
+reaction_norm_paired_dofs=1.68691840e+02

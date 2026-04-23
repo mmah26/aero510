@@ -105,6 +105,8 @@ INPUT C:\Users\Administrator\AppData\Roaming\MiKTeX\tex\latex\booktabs\booktabs.
 INPUT C:\Users\Administrator\AppData\Roaming\MiKTeX\tex\latex\booktabs\booktabs.sty
 INPUT C:\Program Files\MiKTeX\tex\latex\tools\longtable.sty
 INPUT C:\Program Files\MiKTeX\tex\latex\tools\longtable.sty
+INPUT C:\Users\Administrator\AppData\Roaming\MiKTeX\tex\latex\float\float.sty
+INPUT C:\Users\Administrator\AppData\Roaming\MiKTeX\tex\latex\float\float.sty
 INPUT C:\Program Files\MiKTeX\tex\latex\l3backend\l3backend-pdftex.def
 INPUT C:\Program Files\MiKTeX\tex\latex\l3backend\l3backend-pdftex.def
 INPUT .\main.aux
@@ -155,6 +157,7 @@ INPUT C:\Program Files\MiKTeX\fonts\tfm\public\cm\cmr12.tfm
 INPUT C:\Program Files\MiKTeX\fonts\tfm\public\cm\cmbx12.tfm
 INPUT C:\Program Files\MiKTeX\fonts\tfm\public\amsfonts\cmextra\cmex7.tfm
 INPUT C:\Program Files\MiKTeX\fonts\tfm\public\amsfonts\cmextra\cmex7.tfm
+INPUT C:\Program Files\MiKTeX\fonts\tfm\public\cm\cmbx10.tfm
 INPUT ..\figures\truss\hex_render.png
 INPUT ..\figures\truss\hex_render.png
 INPUT ..\figures\truss\hex_render.png
@@ -169,52 +172,53 @@ INPUT ..\figures\truss\hex_2D.png
 INPUT ..\figures\truss\hex_2D.png
 INPUT ..\figures\truss\hex_2D.png
 INPUT ..\figures\truss\hex_2D.png
-INPUT ..\figures\truss\case1_setup_undeformed.png
-INPUT ..\figures\truss\case1_setup_undeformed.png
-INPUT ..\figures\truss\case1_setup_undeformed.png
-INPUT ..\figures\truss\case1_setup_undeformed.png
-INPUT ..\figures\truss\case1_setup_undeformed.png
-INPUT ..\figures\truss\case1_setup_undeformed.png
-INPUT ..\figures\truss\case1_setup_undeformed.png
-INPUT ..\figures\truss\case1_deform_stress.png
-INPUT ..\figures\truss\case1_deform_stress.png
-INPUT ..\figures\truss\case1_deform_stress.png
-INPUT ..\figures\truss\case1_deform_stress.png
-INPUT ..\figures\truss\case1_deform_stress.png
-INPUT ..\figures\truss\case1_deform_stress.png
-INPUT ..\figures\truss\case1_deform_stress.png
-INPUT ..\figures\truss\case2_setup_undeformed.png
-INPUT ..\figures\truss\case2_setup_undeformed.png
-INPUT ..\figures\truss\case2_setup_undeformed.png
-INPUT ..\figures\truss\case2_setup_undeformed.png
-INPUT ..\figures\truss\case2_setup_undeformed.png
-INPUT ..\figures\truss\case2_setup_undeformed.png
-INPUT ..\figures\truss\case2_setup_undeformed.png
-INPUT ..\figures\truss\case2_deform_stress.png
-INPUT ..\figures\truss\case2_deform_stress.png
-INPUT ..\figures\truss\case2_deform_stress.png
-INPUT ..\figures\truss\case2_deform_stress.png
-INPUT ..\figures\truss\case2_deform_stress.png
-INPUT ..\figures\truss\case2_deform_stress.png
-INPUT ..\figures\truss\case2_deform_stress.png
-INPUT ..\figures\truss\case3_setup_undeformed.png
-INPUT ..\figures\truss\case3_setup_undeformed.png
-INPUT ..\figures\truss\case3_setup_undeformed.png
-INPUT ..\figures\truss\case3_setup_undeformed.png
-INPUT ..\figures\truss\case3_setup_undeformed.png
-INPUT ..\figures\truss\case3_setup_undeformed.png
-INPUT ..\figures\truss\case3_setup_undeformed.png
-INPUT ..\figures\truss\case3_deform_stress.png
-INPUT ..\figures\truss\case3_deform_stress.png
-INPUT ..\figures\truss\case3_deform_stress.png
-INPUT ..\figures\truss\case3_deform_stress.png
-INPUT ..\figures\truss\case3_deform_stress.png
-INPUT ..\figures\truss\case3_deform_stress.png
-INPUT ..\figures\truss\case3_deform_stress.png
 INPUT C:\Program Files\MiKTeX\fonts\tfm\public\cm\cmmi9.tfm
 INPUT C:\Program Files\MiKTeX\fonts\tfm\public\cm\cmsy9.tfm
 INPUT C:\Program Files\MiKTeX\fonts\tfm\public\amsfonts\cmextra\cmex9.tfm
 INPUT C:\Program Files\MiKTeX\fonts\tfm\public\cm\cmbx7.tfm
+INPUT ..\figures\truss\case1_setup_undeformed.png
+INPUT ..\figures\truss\case1_setup_undeformed.png
+INPUT ..\figures\truss\case1_setup_undeformed.png
+INPUT ..\figures\truss\case1_setup_undeformed.png
+INPUT ..\figures\truss\case1_setup_undeformed.png
+INPUT ..\figures\truss\case1_setup_undeformed.png
+INPUT ..\figures\truss\case1_setup_undeformed.png
+INPUT ..\figures\truss\case1_deform_stress.png
+INPUT ..\figures\truss\case1_deform_stress.png
+INPUT ..\figures\truss\case1_deform_stress.png
+INPUT ..\figures\truss\case1_deform_stress.png
+INPUT ..\figures\truss\case1_deform_stress.png
+INPUT ..\figures\truss\case1_deform_stress.png
+INPUT ..\figures\truss\case1_deform_stress.png
+INPUT ..\figures\truss\case2_setup_undeformed.png
+INPUT ..\figures\truss\case2_setup_undeformed.png
+INPUT ..\figures\truss\case2_setup_undeformed.png
+INPUT ..\figures\truss\case2_setup_undeformed.png
+INPUT ..\figures\truss\case2_setup_undeformed.png
+INPUT ..\figures\truss\case2_setup_undeformed.png
+INPUT ..\figures\truss\case2_setup_undeformed.png
+INPUT ..\figures\truss\case2_deform_stress.png
+INPUT ..\figures\truss\case2_deform_stress.png
+INPUT ..\figures\truss\case2_deform_stress.png
+INPUT ..\figures\truss\case2_deform_stress.png
+INPUT ..\figures\truss\case2_deform_stress.png
+INPUT ..\figures\truss\case2_deform_stress.png
+INPUT ..\figures\truss\case2_deform_stress.png
+INPUT ..\figures\truss\case3_setup_undeformed.png
+INPUT ..\figures\truss\case3_setup_undeformed.png
+INPUT ..\figures\truss\case3_setup_undeformed.png
+INPUT ..\figures\truss\case3_setup_undeformed.png
+INPUT ..\figures\truss\case3_setup_undeformed.png
+INPUT ..\figures\truss\case3_setup_undeformed.png
+INPUT ..\figures\truss\case3_setup_undeformed.png
+INPUT ..\figures\truss\case3_deform_stress.png
+INPUT ..\figures\truss\case3_deform_stress.png
+INPUT ..\figures\truss\case3_deform_stress.png
+INPUT ..\figures\truss\case3_deform_stress.png
+INPUT ..\figures\truss\case3_deform_stress.png
+INPUT ..\figures\truss\case3_deform_stress.png
+INPUT ..\figures\truss\case3_deform_stress.png
+INPUT C:\Program Files\MiKTeX\fonts\tfm\public\cm\cmtt10.tfm
 INPUT ..\figures\panel\case2_n100_undeformed.png
 INPUT ..\figures\panel\case2_n100_undeformed.png
 INPUT ..\figures\panel\case2_n100_undeformed.png
@@ -243,29 +247,27 @@ INPUT ..\figures\panel\case2_convergence_stress.png
 INPUT ..\figures\panel\case2_convergence_stress.png
 INPUT ..\figures\panel\case2_convergence_stress.png
 INPUT ..\figures\panel\case2_convergence_stress.png
+INPUT ..\figures\panel_composite\case1_orientation_sweep.png
+INPUT ..\figures\panel_composite\case1_orientation_sweep.png
+INPUT ..\figures\panel_composite\case1_orientation_sweep.png
+INPUT ..\figures\panel_composite\case1_orientation_sweep.png
+INPUT ..\figures\panel_composite\case1_orientation_sweep.png
+INPUT ..\figures\panel_composite\case1_orientation_sweep.png
+INPUT ..\figures\panel_composite\case1_orientation_sweep.png
+INPUT ..\figures\panel_composite\cases2to5_orientation_robustness.png
+INPUT ..\figures\panel_composite\cases2to5_orientation_robustness.png
+INPUT ..\figures\panel_composite\cases2to5_orientation_robustness.png
+INPUT ..\figures\panel_composite\cases2to5_orientation_robustness.png
+INPUT ..\figures\panel_composite\cases2to5_orientation_robustness.png
+INPUT ..\figures\panel_composite\cases2to5_orientation_robustness.png
+INPUT ..\figures\panel_composite\cases2to5_orientation_robustness.png
 INPUT C:\Program Files\MiKTeX\fonts\tfm\jknappen\ec\tcrm1000.tfm
-INPUT ..\figures\panel_composite\case1_orientation_sweep.png
-INPUT ..\figures\panel_composite\case1_orientation_sweep.png
-INPUT ..\figures\panel_composite\case1_orientation_sweep.png
-INPUT ..\figures\panel_composite\case1_orientation_sweep.png
-INPUT ..\figures\panel_composite\case1_orientation_sweep.png
-INPUT ..\figures\panel_composite\case1_orientation_sweep.png
-INPUT ..\figures\panel_composite\case1_orientation_sweep.png
-INPUT ..\figures\panel_composite\cases2to5_orientation_robustness.png
-INPUT ..\figures\panel_composite\cases2to5_orientation_robustness.png
-INPUT ..\figures\panel_composite\cases2to5_orientation_robustness.png
-INPUT ..\figures\panel_composite\cases2to5_orientation_robustness.png
-INPUT ..\figures\panel_composite\cases2to5_orientation_robustness.png
-INPUT ..\figures\panel_composite\cases2to5_orientation_robustness.png
-INPUT ..\figures\panel_composite\cases2to5_orientation_robustness.png
 INPUT C:\Users\Administrator\AppData\Roaming\MiKTeX\fonts\enc\dvips\cm-super\cm-super-ts1.enc
 INPUT .\main.bbl
 INPUT .\main.bbl
 INPUT main.bbl
 INPUT C:\Program Files\MiKTeX\fonts\tfm\public\cm\cmti10.tfm
 INPUT C:\Program Files\MiKTeX\fonts\tfm\public\cm\cmbx12.tfm
-INPUT C:\Program Files\MiKTeX\fonts\tfm\public\cm\cmbx10.tfm
-INPUT C:\Program Files\MiKTeX\fonts\tfm\public\cm\cmtt10.tfm
 INPUT ..\figures\panel\case1_n10_undeformed.png
 INPUT ..\figures\panel\case1_n10_undeformed.png
 INPUT ..\figures\panel\case1_n10_undeformed.png

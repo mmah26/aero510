@@ -6,6 +6,8 @@
 \usepackage{subcaption}
 \usepackage{booktabs}
 \usepackage{longtable}
+\usepackage{float}
+\providecommand{\FloatBarrier}{\par}
 
 \setlength{\parindent}{15pt}
 \setlength{\textfloatsep}{8pt}
@@ -18,47 +20,110 @@
 
 \begin{document}
 \renewcommand{\baselinestretch}{1.0}\selectfont
+\pagenumbering{gobble}
 \maketitle
 \thispagestyle{empty}
 \begin{center}
-\includegraphics[width=0.56\textwidth,trim=20 20 20 20,clip]{../figures/amazon-prime-air-remars-june-2019-1.jpg}\\[4pt]
+\includegraphics[width=0.56\textwidth]{../figures/amazon-prime-air-remars-june-2019-1.jpg}\\[4pt]
 \small Amazon MK27-2 Delivery Drone \cite{techmonitor_mk27_2019}
 \end{center}
 \clearpage
+\pagenumbering{arabic}
+\setlength{\columnsep}{3ex}
+\twocolumn
 
 \section*{Background and Model Setup}
-This project implemented two structural analysis frameworks for a UAV inspired by Amazon's MK27-2 drone: (i) the direct stiffness method for a 3D truss and (ii) a Galerkin finite element formulation using 4-node quadrilateral elements for a 2D panel. The motivation is lightweight structural assessment for parcel-delivery aircraft concepts that have received significant public and industrial attention \cite{tarasov_cnbc_2022,daleo_freightwaves_2022,oitzman_robotreport_2022,grossman_popmech_2019,muller_axios_2022}. Principal hex-frame dimensions were set from MK27-2 public references \cite{faa_mk27_2022,bou_graphicnews_2022}. The geometry was recreated in Rhino 8 and reduced to a tractable structural idealization: spoke attachment locations were simplified and the hub parcel volume was omitted. Figure~\ref{fig:modeling_hex} shows the rendered concept and the 2D truss-node/element abstraction used for FEM setup.
+This project implemented two structural analysis frameworks for a UAV inspired by Amazon's MK27-2 drone: (i) the direct stiffness method for a 3D truss and (ii) a Galerkin finite element formulation using 4-node quadrilateral elements for a 2D panel. The motivation is lightweight structural assessment for parcel-delivery aircraft concepts that have received significant public and industrial attention \cite{tarasov_cnbc_2022,daleo_freightwaves_2022,oitzman_robotreport_2022,grossman_popmech_2019,muller_axios_2022}. Principal hex-frame dimensions were set from MK27-2 public references \cite{faa_mk27_2022,bou_graphicnews_2022}. The geometry was recreated in Rhino 8 and reduced to a tractable structural idealization: spoke attachment locations were simplified and the hub parcel volume was omitted. Figure~\ref{fig:modeling_setup} shows the rendered concept and 2D truss-node/element abstraction used for FEM setup.
 
 For the baseline metal design, aluminum properties were used: $E=70$ GPa and $\nu=0.3$. Member widths were set to 4 in (outer hex edges) and 2 in (spokes), with thickness 0.5 in. A structural mass check was performed from total truss-member volume. The resulting structural weight was 69.07 lb, below the 90 lb vehicle target, leaving margin for unmodeled components and payload.
-
-\begin{figure}[htbp]
-\centering
-\begin{subfigure}{0.43\textwidth}
-\centering
-\includegraphics[width=0.9\linewidth]{../figures/truss/hex_render.png}
-\caption{Rhino rendering}
-\end{subfigure}
-\hfill
-\begin{subfigure}{0.43\textwidth}
-\centering
-\includegraphics[width=0.9\linewidth]{../figures/truss/hex_2D.png}
-\caption{2D truss geometry abstraction}
-\end{subfigure}
-\caption{UAV geometry development for structural modeling.}
-\label{fig:modeling_hex}
-\end{figure}
 
 \section*{Problem 1: 3D Truss Direct FEM}
 The truss solver was adapted from lecture/sample direct-stiffness workflows and generalized to 3D assembly/solution. A key modeling detail was a 2 in hub offset in the $z$ direction. If all nodes are coplanar ($z=0$), all member direction cosines along $z$ are zero, so the assembled truss has no axial stiffness coupling to $u_z$ DOFs. In that planar limit, out-of-plane loading cannot produce a valid 3D truss response. The nonzero hub offset makes spoke members carry axial components in $z$, enabling true 3D load transfer.
 
 Three load cases were analyzed:
 \begin{enumerate}
-    \item Case 1: $-5$ lbf at hub node in $-z$; perimeter nodes fixed (conservative support idealization).
-    \item Case 2: $225$ lbf pull in $+x$ at node 1; node 4 fixed and additional minimal constraints added to suppress rigid-body modes.
-    \item Case 3: node 5 fixed (snagged-contact analogy); distributed $+z$ loads at remaining nodes with in-plane DOFs constrained to represent thrust-dominated vertical response.
+    \setlength{\itemsep}{1pt}
+    \setlength{\parskip}{0pt}
+    \setlength{\parsep}{0pt}
+    \item \textbf{Case 1 (mid-flight payload at hub):} a $-5$ lbf point load is applied at node 0 in $z$. This represents a downward package/gravity-driven hub load while the outer frame is treated as rigidly supported. To realize that conservative support assumption, nodes 1--6 are fully fixed: $u_x=u_y=u_z=0$.
+    \item \textbf{Case 2 (handling/pull event):} a $+225$ lbf pull is applied at node 1 in $x$, while node 4 is held. This approximates a one-sided pull/drag event during handling or snag recovery. Boundary conditions were selected to retain the physical pull direction while eliminating rigid-body modes: node 4 has $u_x=u_y=u_z=0$; node 1 has $u_y=u_z=0$ so the applied force drives primarily axial $x$ response; node 0 has $u_y=0$; nodes 2,3,5,6 have $u_z=0$.
+    \item \textbf{Case 3 (snagged vehicle, thrusting to recover):} node 5 is treated as a snag/contact point and fixed in all DOFs ($u_x=u_y=u_z=0$). A $+15$ lbf load in $z$ is applied at nodes 0,1,2,3,4,6 to represent upward thrust contributions from the remaining free arms. To model thrust-dominated motion and avoid unphysical in-plane drift, nodes 0,1,2,3,4,6 are constrained with $u_x=u_y=0$.
 \end{enumerate}
 
-\begin{figure}[htbp]
+These DOF selections were tuned to be kinematically stable while preserving the intended physical mechanism for each case. In particular, Case 2 and Case 3 require targeted partial constraints (rather than full-frame fixing) to remove rigid-body modes without suppressing the dominant deformation direction being studied.
+
+\begin{figure}[!t]
+\centering
+\begin{subfigure}{\linewidth}
+\centering
+\includegraphics[width=0.74\linewidth]{../figures/truss/hex_render.png}
+\caption{Rhino rendering of UAV geometry.}
+\label{fig:modeling_rhino}
+\end{subfigure}
+\vspace{2pt}
+\begin{subfigure}{\linewidth}
+\centering
+\includegraphics[width=0.74\linewidth]{../figures/truss/hex_2D.png}
+\caption{2D truss geometry simplification.}
+\label{fig:modeling_hex}
+\end{subfigure}
+\caption{UAV geometry setup used for truss modeling.}
+\label{fig:modeling_setup}
+\end{figure}
+
+\begin{table}[!t]
+\centering
+\caption{Problem 1 displacements and stresses.}
+\label{tab:p1_results}
+\scriptsize
+\setlength{\tabcolsep}{3.0pt}
+\renewcommand{\arraystretch}{0.88}
+\begin{subtable}[t]{\columnwidth}
+\centering
+\caption{Problem 1 nodal deflection magnitude, $|u|$ [ft].}
+\begin{tabular}{c c c c}
+\toprule
+Node & Case 1 & Case 2 & Case 3 \\
+\midrule
+N0 & \textbf{2.199e-06} & \textbf{5.383e-06} & 1.777e-04 \\
+N1 & 0.000e+00 & 2.534e-06 & 2.160e-04 \\
+N2 & 0.000e+00 & 1.403e-06 & \textbf{2.286e-04} \\
+N3 & 0.000e+00 & 1.187e-06 & \textbf{2.286e-04} \\
+N4 & 0.000e+00 & 0.000e+00 & 2.160e-04 \\
+N5 & 0.000e+00 & 1.197e-06 & 0.000e+00 \\
+N6 & 0.000e+00 & 1.450e-06 & 2.073e-04 \\
+\bottomrule
+\end{tabular}
+\label{tab:p1_node_u}
+\end{subtable}
+\vspace{2pt}
+\begin{subtable}[t]{\columnwidth}
+\centering
+\caption{Problem 1 element axial stress [Pa].}
+\begin{tabular}{c c c c}
+\toprule
+Element & Case 1 & Case 2 & Case 3 \\
+\midrule
+E0  &  2422.63 & \textbf{21451.89} &  42175.35 \\
+E1  & \textbf{2532.94} &  -7292.61 &  46380.31 \\
+E2  & \textbf{2532.94} &  -7292.61 &  46380.31 \\
+E3  &  2422.63 & \textbf{21451.89} &  42175.35 \\
+E4  &  2114.50 & -13605.68 & \textbf{-232310.49} \\
+E5  &  2114.50 & -13605.68 &  38718.41 \\
+E6  &  0.00 &  2913.25 & 0.00 \\
+E7  &  0.00 &  3311.37 & 0.00 \\
+E8  &  0.00 &  2913.25 & 0.00 \\
+E9  &  0.00 &  7666.37 & 0.00 \\
+E10 &  0.00 &  7400.50 & 0.00 \\
+E11 &  0.00 &  7666.37 & 0.00 \\
+\bottomrule
+\end{tabular}
+\label{tab:p1_elem_s}
+\end{subtable}
+\renewcommand{\arraystretch}{1.0}
+\end{table}
+
+\begin{figure*}[p]
 \centering
 \begin{subfigure}[t]{0.49\textwidth}\centering
 \includegraphics[width=\linewidth,trim=26 24 26 24,clip]{../figures/truss/case1_setup_undeformed.png}
@@ -91,100 +156,57 @@ Three load cases were analyzed:
 \end{subfigure}
 \caption{Problem 1 truss setup and deformed-stress responses for all three loading cases.}
 \label{fig:prob1_allcases}
-\end{figure}
+\end{figure*}
+\FloatBarrier
 
-\begin{table}[htbp]
-\centering
-\begin{subtable}[t]{0.48\textwidth}
-\centering
-\scriptsize
-\caption{Problem 1 nodal deflection magnitude, $|u|$ [ft].}
-\begin{tabular}{c c c c}
-\toprule
-Node & Case 1 & Case 2 & Case 3 \\
-\midrule
-N0 & \textbf{2.199e-06} & \textbf{5.383e-06} & 1.777e-04 \\
-N1 & 0.000e+00 & 2.534e-06 & 2.160e-04 \\
-N2 & 0.000e+00 & 1.403e-06 & \textbf{2.286e-04} \\
-N3 & 0.000e+00 & 1.187e-06 & \textbf{2.286e-04} \\
-N4 & 0.000e+00 & 0.000e+00 & 2.160e-04 \\
-N5 & 0.000e+00 & 1.197e-06 & 0.000e+00 \\
-N6 & 0.000e+00 & 1.450e-06 & 2.073e-04 \\
-\bottomrule
-\end{tabular}
-\label{tab:p1_node_u}
-\end{subtable}
-\hfill
-\begin{subtable}[t]{0.48\textwidth}
-\centering
-\scriptsize
-\caption{Problem 1 element axial stress [Pa].}
-\begin{tabular}{c c c c}
-\toprule
-Element & Case 1 & Case 2 & Case 3 \\
-\midrule
-E0  &  2422.63 & \textbf{21451.89} &  42175.35 \\
-E1  & \textbf{2532.94} &  -7292.61 &  46380.31 \\
-E2  & \textbf{2532.94} &  -7292.61 &  46380.31 \\
-E3  &  2422.63 & \textbf{21451.89} &  42175.35 \\
-E4  &  2114.50 & -13605.68 & \textbf{-232310.49} \\
-E5  &  2114.50 & -13605.68 &  38718.41 \\
-E6  &  0.00 &  2913.25 & 0.00 \\
-E7  &  0.00 &  3311.37 & 0.00 \\
-E8  &  0.00 &  2913.25 & 0.00 \\
-E9  &  0.00 &  7666.37 & 0.00 \\
-E10 &  0.00 &  7400.50 & 0.00 \\
-E11 &  0.00 &  7666.37 & 0.00 \\
-\bottomrule
-\end{tabular}
-\label{tab:p1_elem_s}
-\end{subtable}
-\caption{Problem 1 displacement and stress results by case.}
-\label{tab:p1_results}
-\end{table}
-
+\clearpage
 \section*{Problem 2: 2D Galerkin Quad FEM (Isotropic Aluminum Panel)}
 Using Homework 8 Galerkin-quad structure as baseline, the top panel was modeled as a 2D plane-stress domain. A nominal pressure of 1 MPa was converted to equivalent edge line traction ($q=p\,t$) for 2D application. While high for nominal aerodynamic loads, this was intentionally conservative for stress screening.
 
+Relative to the homework script style, the workflow was reorganized into smaller analysis blocks with single responsibilities. Core routines include \texttt{shape\_quad4} (shape functions/derivatives), \texttt{jacobian\_quad4} (mapping and derivative transform), \texttt{Bmat\_quad4} (strain-displacement matrix), \texttt{gauss2x2} (integration points/weights), \texttt{D\_matrix} (isotropic constitutive matrix), \texttt{assembly} (global stiffness and load construction), \texttt{solve} (free-DOF system solution), and \texttt{postprocess} (element/nodal stresses and von Mises). Boundary/load preprocessing was separated into \texttt{dirichlet\_bcs\_for\_edge} and \texttt{traction\_load}, so each case definition can remain compact and transparent.
+
 Three cases were analyzed:
 \begin{enumerate}
-    \item Case 1: right-edge traction in $+x$; left edge fixed ($u_x=u_y=0$).
-    \item Case 2: right-edge traction at $45^\circ$; left edge fixed.
-    \item Case 3: bottom-edge traction in $-y$; left and right edges fixed.
+    \item \textbf{Case 1 (axial panel pull):} right-edge traction in $+x$, with the left edge fixed ($u_x=u_y=0$). This approximates an in-plane tensile pull of a panel segment attached to a stiffer support on one side.
+    \item \textbf{Case 2 (combined tension/shear):} right-edge traction at $45^\circ$, with the left edge fixed. This simulates an off-axis in-plane load where both normal and shear components are important.
+    \item \textbf{Case 3 (transverse edge loading):} bottom-edge traction in $-y$, with left and right edges fixed ($u_x=u_y=0$ on both). This represents a panel strip loaded downward between two constrained side boundaries, producing a different stress state than Cases 1--2.
 \end{enumerate}
 
-A mesh convergence sweep was performed at $\approx$10, 100, and 1000 elements for each case (9 solves total). Table~\ref{tab:p2_conv} and Figure~\ref{fig:p2_convplots} summarize the convergence trend for Case 2.
+A mesh convergence sweep was performed at $\approx$10, 100, and 1000 elements for each case (9 solves total). Maximum $\sigma_x$, $\sigma_y$, and $\sigma_{vm}$ were tracked versus element count to assess discretization sensitivity before interpreting local stress features. Figure~\ref{fig:p2_convplots} and Table~\ref{tab:p2_conv} summarize the convergence trend for Case 2.
 
-\begin{figure}[htbp]
+\begin{figure}[H]
 \centering
-\begin{minipage}[b]{0.49\textwidth}
 \begin{subfigure}[t]{\linewidth}\centering
 \includegraphics[width=\linewidth,trim=12 24 12 24,clip]{../figures/panel/case2_n100_undeformed.png}
-\caption{Case 2 setup (100 elements)}
+\caption{Undeformed mesh with BCs and traction}
 \end{subfigure}
 
 \begin{subfigure}[b]{\linewidth}\centering
-\includegraphics[width=\linewidth,trim=12 24 12 24,clip]{../figures/panel/case2_n100_deformed.png}
-\caption{Case 2 deformed}
+\includegraphics[width=\linewidth]{../figures/panel/case2_n100_deformed.png}
+\caption{Deformed mesh}
 \end{subfigure}
-\end{minipage}
-\hfill
-\begin{minipage}[b]{0.49\textwidth}
-\begin{subfigure}[b]{\linewidth}\centering
-\includegraphics[width=\linewidth,trim=10 88 10 88,clip]{../figures/panel/case2_n100_stress_stack.png}
-\caption{Case 2 stress stack}
-\end{subfigure}
-\end{minipage}
-\caption{Sample Problem 2 outputs for one representative case and mesh level.}
+\caption{Problem 2 case 2 mesh (100 elements)}
 \label{fig:p2_sample}
 \end{figure}
 
-\begin{figure}[htbp]
+\begin{figure}[H]
 \centering
-\begin{minipage}[t]{0.52\textwidth}
+\includegraphics[width=\linewidth]{../figures/panel/case2_n100_stress_stack.png}
+\caption{Case 2 stress stack (100 elements).}
+\label{fig:p2_stress_stack}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{../figures/panel/case2_convergence_stress.png}
+\caption{Case 2 stress convergence}
+\label{fig:p2_convplots}
+\end{figure}
+
+\begin{table}[H]
 \centering
 \scriptsize
-\captionof{table}{Problem 2 convergence summary for $\{10,100,1000\}$ elements per case.}
+\caption{Problem 2 convergence study.}
 \label{tab:p2_conv}
 \begin{tabular}{c c c c}
 \toprule
@@ -203,35 +225,32 @@ Case & $n_\mathrm{elem}$ & $\max|u|$ [m] & $\max \sigma_{vm}$ [Pa] \\
 3 & 1000 & 1.7877e-03 & 8.60951e+07 \\
 \bottomrule
 \end{tabular}
-\end{minipage}
-\hfill
-\begin{minipage}[t]{0.44\textwidth}
+\end{table}
+\FloatBarrier
+
+\clearpage
+\section*{Problem 3: CFRP Orthotropic Panel}
+\begin{figure}[!t]
 \centering
-\includegraphics[width=\linewidth]{../figures/panel/case2_convergence_stress.png}
-\captionof{figure}{Case 2 convergence: $\max|\sigma_x|$, $\max|\sigma_y|$, and $\max \sigma_{vm}$.}
-\label{fig:p2_convplots}
-\end{minipage}
+\begin{subfigure}{\linewidth}\centering
+\includegraphics[width=\linewidth]{../figures/panel_composite/case1_orientation_sweep.png}
+\caption{Case 1 orientation sweep}
+\end{subfigure}
+\begin{subfigure}{\linewidth}\centering
+\includegraphics[width=\linewidth]{../figures/panel_composite/cases2to5_orientation_robustness.png}
+\caption{Arbitrary traction robustness (Cases 2--5)}
+\end{subfigure}
+\caption{CFRP fiber-angle trade study.}
+\label{fig:p3_orient}
 \end{figure}
 
-\section*{Problem 3: CFRP Orthotropic Panel and Fiber-Angle Recommendation}
-The panel was then reanalyzed as a unidirectional CFRP lamina under plane stress using orthotropic constitutive response \cite{barbero_composite_fea}. Constituents and volume fraction were set from lecture guidance: carbon fiber/epoxy with $V_f=0.60$, $E_f=241$ GPa, $\nu_f=0.2$, $E_m=3.12$ GPa, $\nu_m=0.38$. Micromechanics relations were used to compute equivalent lamina constants:
-\[
-E_1=145.848\ \text{GPa},\quad E_2=15.903\ \text{GPa},\quad G_{12}=4.339\ \text{GPa},\quad \nu_{12}=0.272.
-\]
-
-Five right-edge traction directions were considered with left-edge fixed DOFs:
-\[
-\theta_\text{load}=\{0^\circ,\;30^\circ,\;45^\circ,\;60^\circ,\;90^\circ\}.
-\]
-To recommend orientation, a sweep over fiber angle $\theta_f\in[0^\circ,90^\circ]$ at $5^\circ$ increments was run. Table~\ref{tab:p3_orientation} shows representative values and demonstrates the trend used for selection.
-
-\begin{table}[htbp]
+\begin{table}[!t]
 \centering
 \scriptsize
-\caption{Problem 3 orientation study summary (selected angles).}
+\caption{Fiber orientation study}
 \begin{tabular}{c c c}
 \toprule
-$\theta_f$ [deg] & Case 1: $\max \sigma_{vm}$ [Pa] & Worst of Cases 2--5: $\max \sigma_{vm}$ [Pa] \\
+$\theta_f$ [deg] & \shortstack[c]{+x traction: \\ $\max \sigma_{vm}$ [Pa]} & \shortstack[c]{Worst traction dir: \\ $\max \sigma_{vm}$ [Pa]} \\
 \midrule
 0  & \textbf{1.003e+06} & 6.475e+07 \\
 15 & 1.019e+06 & 8.407e+07 \\
@@ -245,27 +264,30 @@ $\theta_f$ [deg] & Case 1: $\max \sigma_{vm}$ [Pa] & Worst of Cases 2--5: $\max 
 \label{tab:p3_orientation}
 \end{table}
 
+The panel was then reanalyzed as a unidirectional CFRP lamina under plane stress using orthotropic constitutive response \cite{barbero_composite_fea}. Constituents and volume fraction were set from lecture guidance: carbon fiber/epoxy with $V_f=0.60$, $E_f=241$ GPa, $\nu_f=0.2$, $E_m=3.12$ GPa, $\nu_m=0.38$. From Barbero Chapter 6 micromechanics, effective lamina constants were computed first in the material 1--2 frame, then used to form the reduced in-plane orthotropic stiffness matrix $Q$.
+
+Implementation changes relative to Problem 2 were limited to constitutive modeling and orientation handling; mesh generation, quadrature, assembly, and solver flow were retained. Specifically, orthotropic routines were added to compute $Q$ (`orthotropic\_Q\_plane\_stress`) and rotate it to global axes (`rotate\_Qbar\_plane\_stress`) for a specified fiber angle $\theta_f$. The rotated matrix $\bar{Q}$ replaced the isotropic $D$ in the same element-level stress relation $\sigma=\bar{Q}\,\varepsilon$, allowing direct comparison against the isotropic baseline under identical load/BC definitions.
+
+Five right-edge traction directions were evaluated ($0^\circ,30^\circ,45^\circ,60^\circ,90^\circ$) with left-edge fixed DOFs, and a fiber-angle sweep $\theta_f\in[0^\circ,90^\circ]$ at $5^\circ$ increments was run for each load direction. This provides a direct stress-based proof of orientation selection instead of a single-angle comparison.
+
+\[
+\begin{aligned}
+E_1 &= 145.848\ \text{GPa} \\
+E_2 &= 15.903\ \text{GPa} \\
+G_{12} &= 4.339\ \text{GPa} \\
+\nu_{12} &= 0.272
+\end{aligned}
+\]
+
+Table~\ref{tab:p3_orientation} shows representative values and demonstrates the trend used for selection.
+
 Using the full $5^\circ$ sweep, the selected recommendations were:
 \begin{itemize}
     \item For pure $+x$ traction (Case 1): $\theta_f=0^\circ$ minimizes $\max \sigma_{vm}$.
     \item For arbitrary right-edge tractions (Cases 2--5): minimax orientation $\theta_f=65^\circ$ minimizes worst-case $\max \sigma_{vm}$.
 \end{itemize}
 
-\begin{figure}[htbp]
-\centering
-\begin{subfigure}{0.49\textwidth}\centering
-\includegraphics[width=\linewidth]{../figures/panel_composite/case1_orientation_sweep.png}
-\caption{Case 1 orientation sweep}
-\end{subfigure}
-\hfill
-\begin{subfigure}{0.49\textwidth}\centering
-\includegraphics[width=\linewidth]{../figures/panel_composite/cases2to5_orientation_robustness.png}
-\caption{Arbitrary traction robustness (Cases 2--5)}
-\end{subfigure}
-\caption{CFRP fiber-angle trade studies used for recommendation.}
-\label{fig:p3_orient}
-\end{figure}
-
+\FloatBarrier
 \section*{AI Ethics in Engineering}
 For the assignment ethics component, I prompted AI with predefined geometry and case definitions for the 3D truss and 2D panel models. The request was:
 \begin{quote}
@@ -280,6 +302,7 @@ After follow-up prompts focused on restructuring and visualization details, the 
 In practice, LLMs should be used as an integrated partner for implementation tasks: coding, refactoring, automation, and postprocessing. They are valuable when the engineer already understands the physics and numerical methods, and then uses AI to accelerate execution. They should not replace engineering intuition, validation, or critical decision-making. The engineer must remain in-the-loop, review assumptions, and avoid black-box use.
 
 \clearpage
+\onecolumn
 \bibliographystyle{IEEEtran}
 \bibliography{references}
 

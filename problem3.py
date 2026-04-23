@@ -12,7 +12,6 @@ from postproc_galerkinFEM import (
     plot_orientation_sweep,
 )
 
-
 def make_cfrp_case(
     name,
     xy,
@@ -194,11 +193,10 @@ def main():
     ax.plot(angles, vm_arb[0], marker="o", lw=1.2, label="Case 2 (30 deg)")
     ax.plot(angles, vm_arb[1], marker="s", lw=1.2, label="Case 3 (45 deg)")
     ax.plot(angles, vm_arb[2], marker="^", lw=1.2, label="Case 4 (60 deg)")
-    ax.plot(angles, vm_arb[3], marker="d", lw=1.2, label="Case 5 (+y)")
+    ax.plot(angles, vm_arb[3], marker="d", lw=1.2, label="Case 5 (90 deg)")
     ax.plot(angles, worst_vm, "k--", lw=2.0, label="Worst of Cases 2-5")
     ax.set_xlabel("Fiber orientation [deg]")
     ax.set_ylabel(r"$\max \sigma_{vm}$ [Pa]")
-    ax.set_title("Arbitrary Right-Traction Cases: Orientation Robustness")
     ax.grid(True, ls=":", alpha=0.4)
     ax.legend(frameon=False)
     ax.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))

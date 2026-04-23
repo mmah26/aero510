@@ -184,7 +184,7 @@ def _plot_traction_vectors(ax, xy, loads):
         dominant = tvec[1] if abs(tvec[1]) >= abs(tvec[0]) else tvec[0]
         corner_force_signed = np.sign(dominant) * corner_force
         handles.append(Line2D([0], [0], color="tab:red", lw=2.0))
-        labels.append(f"traction: {corner_force_signed:.2f} N")
+        labels.append(f"traction: {corner_force_signed:.2f} N/m")
     return handles, labels
 
 
@@ -209,7 +209,6 @@ def plot_undeformed_mesh(xy, conn, case, out_path):
     ax.set_xlim(xmin - 0.04 * dx, xmax + 0.04 * dx)
     ax.set_ylim(-0.2, 0.2)
     _style_axes(ax)
-    ax.set_title(f"{case['name']}: Undeformed Mesh")
     fig.savefig(out_path, dpi=200)
     plt.close(fig)
 
@@ -243,11 +242,10 @@ def plot_deformed_mesh(xy, conn, U_nodes, title, out_path, scale=None):
     ax.set_ylim(y_min_lim, y_max_lim)
     handles = [
         Line2D([0], [0], color="0.70", lw=1.2, label="undeformed"),
-        Line2D([0], [0], color="tab:red", lw=1.2, label="deformed"),
+        Line2D([0], [0], color="tab:red", lw=1.2, label=f"deformed (scale={scale:.2e})"),
     ]
     ax.legend(handles=handles, loc="upper left", frameon=False, fontsize=8)
     _style_axes(ax)
-    ax.set_title(f"{title}: Deformed Mesh (scale={scale:.2e})")
     fig.savefig(out_path, dpi=200, bbox_inches="tight")
     plt.close(fig)
     return scale
@@ -265,7 +263,6 @@ def plot_stress_contour(xy, conn, nodal_scalar_pa, label, title, out_path, cmap=
     cbar.update_ticks()
 
     _style_axes(ax)
-    ax.set_title(title)
     fig.savefig(out_path, dpi=200, bbox_inches="tight")
     plt.close(fig)
 
@@ -313,7 +310,6 @@ def plot_stress_stack(
         cbar.ax.xaxis.set_major_formatter(FormatStrFormatter("%.2e"))
         cbar.update_ticks()
 
-    fig.suptitle(case_title, fontsize=12)
     fig.savefig(out_path, dpi=200, bbox_inches="tight")
     plt.close(fig)
 
@@ -389,7 +385,6 @@ def plot_case_convergence(out_dir, case_tag, case_title, elem_counts, sx_vals, s
 
     ax.set_xlabel("Number of elements")
     ax.set_ylabel("Stress [Pa]")
-    ax.set_title(f"{case_title}: Stress Convergence")
     ax.grid(True, ls=":", alpha=0.4)
     ax.legend(frameon=False)
     ax.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))

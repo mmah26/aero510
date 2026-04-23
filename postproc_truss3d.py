@@ -22,9 +22,12 @@ def _style_3d_axes_clean(ax):
     ax.grid(False)
     # keep pane background, but disable gridlines
     try:
-        ax.xaxis.pane.set_visible(True)
-        ax.yaxis.pane.set_visible(True)
-        ax.zaxis.pane.set_visible(True)
+        ax.xaxis.pane.set_facecolor((1.0, 1.0, 1.0, 0.0))
+        ax.yaxis.pane.set_facecolor((1.0, 1.0, 1.0, 0.0))
+        ax.zaxis.pane.set_facecolor((1.0, 1.0, 1.0, 0.0))
+        ax.xaxis.pane.set_edgecolor((1.0, 1.0, 1.0, 0.0))
+        ax.yaxis.pane.set_edgecolor((1.0, 1.0, 1.0, 0.0))
+        ax.zaxis.pane.set_edgecolor((1.0, 1.0, 1.0, 0.0))
     except Exception:
         pass
     ax.tick_params(axis="both", which="major", labelsize=8, pad=1)
@@ -57,7 +60,7 @@ def summarize_case(name, result):
     stress = result["stress"]
     max_abs_stress = np.max(np.abs(stress))
     print(f"\n{name}")
-    print(f"  max nodal deflection magnitude: {max_u:.6e} ft")
+    print(f"  max nodal deflection magnitude: {max_u:.6e} m")
     print(f"  element stress range: [{np.min(stress):.6e}, {np.max(stress):.6e}] Pa")
     print(f"  max |element stress|: {max_abs_stress:.6e} Pa")
 
@@ -75,7 +78,7 @@ def write_case_outputs(out_dir, case_tag, E2N, out):
     n_nodes = out["U_nodes"].shape[0]
     node_ids = np.arange(n_nodes, dtype=int)
     node_table = np.column_stack([node_ids, out["U_nodes"], out["u_mag"]])
-    node_header = "node,ux_ft,uy_ft,uz_ft,u_mag_ft"
+    node_header = "node,ux_m,uy_m,uz_m,u_mag_m"
     np.savetxt(
         out_dir / f"{case_tag}_node_displacements.csv",
         node_table,
@@ -98,7 +101,7 @@ def write_case_outputs(out_dir, case_tag, E2N, out):
     )
 
     with open(out_dir / f"{case_tag}_summary.txt", "w", encoding="utf-8") as f:
-        f.write(f"max_nodal_deflection_ft={out['max_u']:.8e}\n")
+        f.write(f"max_nodal_deflection_m={out['max_u']:.8e}\n")
         f.write(f"min_element_stress_pa={np.min(out['stress']):.8e}\n")
         f.write(f"max_element_stress_pa={np.max(out['stress']):.8e}\n")
         f.write(f"max_abs_element_stress_pa={np.max(np.abs(out['stress'])):.8e}\n")
@@ -115,9 +118,9 @@ def plot_hex_2D(co, e, out_path=None, show=False):
     for i, (xn, yn) in enumerate(co_2d):
         zn = co[i, 2] if co.shape[1] > 2 else 0.0
         ax.annotate(
-            f"N{i}: ({xn:.1f}, {yn:.1f}, {zn:.1f})",
+            f"N{i}: ({xn:.1f}, {yn:.1f}, {zn:.1f}) m",
             xy=(xn, yn),
-            xytext=(6, 6),
+            xytext=(10, 10),
             textcoords="offset points",
             fontsize=8,
             color="b",
@@ -128,7 +131,7 @@ def plot_hex_2D(co, e, out_path=None, show=False):
         ax.annotate(
             f"E{k}",
             xy=(xm, ym),
-            xytext=(4, 4),
+            xytext=(8, 8),
             textcoords="offset points",
             ha="center",
             va="center",
@@ -137,14 +140,13 @@ def plot_hex_2D(co, e, out_path=None, show=False):
         )
 
     ax.set_aspect("equal", adjustable="box")
-    ax.set_xlabel("x (ft)")
-    ax.set_ylabel("y (ft)")
-    ax.set_title("2D Hex Truss")
+    ax.set_xlabel("x [m]")
+    ax.set_ylabel("y [m]")
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
 
     if out_path is not None:
-        fig.savefig(out_path, format="svg")
+        fig.savefig(out_path, format="svg", bbox_inches="tight", pad_inches=0.15)
     if show:
         plt.show()
     else:
@@ -197,15 +199,14 @@ def plot_truss_with_bcs_loads_3d(V, E2N, bcs, loads, ax=None, title="Truss with 
         dx, dy, dz = fx * q_scale, fy * q_scale, fz * q_scale
         ax.quiver(x, y, z, dx, dy, dz, color="r", linewidth=1.5)
         fmag = np.linalg.norm([fx, fy, fz])
-        ax.text(x + dx, y + dy, z + dz, f"{fmag:.2f} lbf", color="r", fontsize=8)
+        ax.text(x + dx, y + dy, z + dz, f"{fmag:.2f} N", color="r", fontsize=8)
 
-    ax.set_xlabel("x (ft)")
-    ax.set_ylabel("y (ft)")
-    ax.set_zlabel("z (ft)")
+    ax.set_xlabel("x (m)")
+    ax.set_ylabel("y (m)")
+    ax.set_zlabel("z (m)")
     ax.xaxis.labelpad = 4
     ax.yaxis.labelpad = 4
     ax.zaxis.labelpad = 0
-    ax.set_title(title)
     _set_axes_equal_3d(ax, V)
     _style_3d_axes_clean(ax)
     return ax
@@ -260,21 +261,26 @@ def plot_deformed_stress_truss_3d(
     sigma_at_max_mag = float(s[idx_max])
     legend_text = rf"$\sigma_{{max}}={sigma_at_max_mag:.3e}\ \mathrm{{Pa}}$ at E{idx_max}"
     legend_handle = Line2D([], [], linestyle="None", label=legend_text)
-    ax.legend(handles=[legend_handle], loc="upper left", fontsize=8, frameon=True)
+    ax.legend(
+        handles=[legend_handle],
+        loc="lower left",
+        bbox_to_anchor=(0.02, 0.75),
+        fontsize=8,
+        frameon=False,
+    )
 
-    cbar = plt.colorbar(lcd, ax=ax, pad=0.12, fraction=0.04, shrink=0.82, aspect=24)
+    cbar = plt.colorbar(lcd, ax=ax, pad=0.08, fraction=0.03, shrink=0.68, aspect=20)
     cbar.set_label("Axial Stress [Pa]")
     cbar.ax.tick_params(labelsize=8)
     cbar.formatter = FormatStrFormatter("%.2e")
     cbar.update_ticks()
 
-    ax.set_xlabel("x (ft)")
-    ax.set_ylabel("y (ft)")
-    ax.set_zlabel("z (ft)")
+    ax.set_xlabel("x (m)")
+    ax.set_ylabel("y (m)")
+    ax.set_zlabel("z (m)")
     ax.xaxis.labelpad = 4
     ax.yaxis.labelpad = 4
     ax.zaxis.labelpad = 0
-    ax.set_title(title)
     _set_axes_equal_3d(ax, np.vstack([V, V_def]))
     _style_3d_axes_clean(ax)
     return ax

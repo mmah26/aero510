@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
-from hex_geometry import E_al, hex_geometry, truss_areas
+from hex_geometry import E_al, IN_TO_M, w_drone, w_package, hex_geometry, truss_areas
 from truss3d_solver import DirectFEM3D, fix_node_all_dofs, fix_node_dofs
 from postproc_truss3d import (
     summarize_case,
@@ -13,8 +13,8 @@ from postproc_truss3d import (
 )
 
 # Nonplanar geometry is required for truss z-load response.
-# center hub dropped by 2 in relative to rim nodes.
-hub_z_shift = - 2 / 12 
+# Center hub dropped by 2 in, i.e. 0.0508 m, relative to rim nodes.
+hub_z_shift = -2.0 * IN_TO_M
 V, E2N = hex_geometry(hub_z=hub_z_shift, rim_z=0.0)
 A = truss_areas(E2N)
 E = E_al
@@ -27,14 +27,14 @@ plot_hex_2D(V, E2N, out_path=out_dir / "hex_2D.svg", show=False)
 
 # Case 1 assumptions (mid-flight package load):
 # - Physical intent: payload acts downward at the hub while perimeter nodes are treated as rigidly supported.
-# - Load model: point load at node 0 in -z.
+# - Load model: point load at node 0 in -z, applied in newtons.
 # - BC rationale: nodes 1..6 fully fixed (ux=uy=uz=0) to represent a conservative, stiff support condition
 #   and isolate local spoke response around the hub.
 case1 = {
     "name": "Case 1: Mid-flight package load",
     "mesh": {"V": V, "E2N": E2N},
     "properties": {"E": E, "A": A},
-    "loads": [{"type": "point", "node": 0, "value": [0.0, 0.0, -5.0]}],
+    "loads": [{"type": "point", "node": 0, "value": [0.0, 0.0, -w_package]}],
     "bcs": (
         fix_node_all_dofs(1)
         + fix_node_all_dofs(2)
@@ -47,7 +47,7 @@ case1 = {
 
 # Case 2 assumptions (child pull while adult holds opposite side):
 # - Physical intent: pulling node 1 in +x while node 4 is held fixed.
-# - Load model: point load +225 lbf in +x at node 1.
+# - Load model: point load in +x at node 1, applied in newtons.
 # - BC rationale:
 #   1) node 4 fully fixed = holding point,
 #   2) node 1: uy=uz=0 to keep applied pull directional in +x,
@@ -56,7 +56,7 @@ case2 = {
     "name": "Case 2: Child pull at node 1, adult hold at node 4",
     "mesh": {"V": V, "E2N": E2N},
     "properties": {"E": E, "A": A},
-    "loads": [{"type": "point", "node": 1, "value": [225.0, 0.0, 0.0]}],
+    "loads": [{"type": "point", "node": 1, "value": [1000, 0.0, 0.0]}],
     "bcs": (
         fix_node_all_dofs(4)
         + fix_node_dofs(1, ["uy", "uz"])
@@ -70,17 +70,19 @@ case2 = {
 
 # Case 3 assumptions (vehicle snagged at node 5, thrusting upward):
 # - Physical intent: node 5 is tangled/anchored, remaining nodes supply upward thrust.
-# - Load model: +15 lbf in +z at nodes 0,1,2,3,4,6.
+# - Load model: +z point loads at nodes 0,1,2,3,4,6, applied in newtons.
 # - BC rationale:
 #   1) node 5 fully fixed = snag/contact point,
 #   2) nodes 0,1,2,3,4,6 have ux=uy=0 so motion is restricted to vertical response (z-direction thrust model),
 #      representing an idealized "no in-plane drift" assumption while attempting lift-off.
 case3_load_nodes = [0, 1, 2, 3, 4, 6]
+p_free_nodes = w_drone / 6
+
 case3 = {
     "name": "Case 3: Tangled drone, distributed thrust",
     "mesh": {"V": V, "E2N": E2N},
     "properties": {"E": E, "A": A},
-    "loads": [{"type": "point", "node": n, "value": [0.0, 0.0, 15.0]} for n in case3_load_nodes],
+    "loads": [{"type": "point", "node": n, "value": [0.0, 0.0, p_free_nodes]} for n in case3_load_nodes],
     "bcs": (
         fix_node_all_dofs(5)
         + fix_node_dofs(0, ["ux", "uy"])
@@ -95,7 +97,7 @@ case3 = {
 cases = [case1, case2, case3]
 case_tags = ["case1", "case2", "case3"]
 case_titles = ["Case 1", "Case 2", "Case 3"]
-print(f"Using nonplanar 3D hex geometry: hub z = {hub_z_shift:.4f} ft, rim z = 0 ft.")
+print(f"Using nonplanar 3D hex geometry: hub z = {hub_z_shift:.4f} m, rim z = 0 m.")
 
 for i, case in enumerate(cases):
     try:
@@ -106,7 +108,7 @@ for i, case in enumerate(cases):
 
         scale = deformation_scale(V, out["U_nodes"])
 
-        fig1 = plt.figure(figsize=(8, 6))
+        fig1 = plt.figure(figsize=(6, 6))
         ax1 = fig1.add_subplot(111, projection="3d")
         plot_truss_with_bcs_loads_3d(
             V,
@@ -116,10 +118,19 @@ for i, case in enumerate(cases):
             ax=ax1,
             title=case_titles[i],
         )
-        fig1.subplots_adjust(left=0.06, right=0.93, bottom=0.08, top=0.92)
-        fig1.savefig(out_dir / f"{case_tags[i]}_setup_undeformed.png", dpi=220)
+        fig1.subplots_adjust(left=0.06, right=0.88, bottom=0.08, top=0.92)
+        fig1.savefig(
+            out_dir / f"{case_tags[i]}_setup_undeformed.png",
+            dpi=220,
+        )
+        # fig1.savefig(
+        #     out_dir / f"{case_tags[i]}_setup_undeformed.png",
+        #     dpi=220,
+        #     bbox_inches="tight",
+        #     pad_inches=0.15,
+        # )
 
-        fig2 = plt.figure(figsize=(8, 6))
+        fig2 = plt.figure(figsize=(6, 6))
         ax2 = fig2.add_subplot(111, projection="3d")
         plot_deformed_stress_truss_3d(
             V,
@@ -131,8 +142,17 @@ for i, case in enumerate(cases):
             ax=ax2,
             title=case_titles[i],
         )
-        fig2.subplots_adjust(left=0.06, right=0.90, bottom=0.08, top=0.92)
-        fig2.savefig(out_dir / f"{case_tags[i]}_deform_stress.png", dpi=220)
+        fig2.subplots_adjust(left=0.06, right=0.84, bottom=0.08, top=0.92)
+        fig2.savefig(
+            out_dir / f"{case_tags[i]}_deform_stress.png",
+            dpi=220,
+        )
+        # fig2.savefig(
+        #     out_dir / f"{case_tags[i]}_deform_stress.png",
+        #     dpi=220,
+        #     bbox_inches="tight",
+        #     pad_inches=0.15,
+        # )
     except np.linalg.LinAlgError as exc:
         print(f"\n{case['name']}")
         print("  solve failed: singular stiffness matrix")
