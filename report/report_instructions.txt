@@ -1,0 +1,94 @@
+I need to write a report about this project (problems 1, 2, 3) with the main body taking no more than 5 pages. 
+
+In 
+C:\Users\Administrator\main\umich\4_Winter2026\AERO510\project\report\report_Ref
+
+I have attached an example report for another assignment in my style. use this template and formatting. 
+
+-------------------------------------------------------------------
+Rough layout (i am typing out the ideas I want you to rewrite/elaborate upon using our chat history working on thisproject, and using my writing style from the sample report as reference): 
+
+Intro: 
+------
+explain that in this project the direct method of trusses in 3D and the galerkin FEM method using quad elements were implemented to conduct
+structural analysis of a UAV inspired by Amazon's MK27-2 drone for drone deliveries. 
+can cite in IEEE notation with brackets eg [1]: 
+tarasov_cnbc_2022
+daleo_freightwaves_2022
+oitzman_robotreport_2022
+grossman_popmech_2019
+muller_axios_202
+
+Modelling: 
+----------
+short narrative of the hexagonal geometry principal dimensions found from the sources:
+faa_mk27_2022
+bou_graphicnews_2022
+
+I then modelled in rhino8 with the render: C:\Users\Administrator\main\umich\4_Winter2026\AERO510\project\figures\truss\hex_render.png
+and the C:\Users\Administrator\main\umich\4_Winter2026\AERO510\project\figures\truss\hex_2D.svg
+these can be inserted as side by side figures. 
+
+The location of the spokes connecting to the hexagonal frame was modified from real-life pictures of the MK27.2 for modelling simplicity, 
+the shoe box sized parcel at the hub was removed and not modelled. 
+
+given the drone weight = 90lbs, parcel weight = 5lbs, material properties E = 70GPa, nu = 0.3,
+material was found to be aluminum and used the density of 169 lb/ft^3 (or whatever equivalent SI value)
+
+I assigned widths for the hexagonal panels (4in) and spoke panels (2 in) and assigned thickness of 0.5in. 
+I did a structural weight calcluation to make sure that the alunimum weight was below 90lb prescribed weight, with tolerance for the parcel weight and components not modelled (propellers, parcel hold)
+
+structural weight was 69lb. 
+
+Problem1
+--------
+truss code from the sample lecture and hw3 was modified. 
+the drone was modelled as a truss, and the 2 inch z shift of the hub was necessary for it to be a true 3D truss, otherwise the normals would be 0 if everything was planar. (Explain this conciesly as you did to me before)
+3 loading cases were defined and modelled, consisting of different combinations of BCs and point loads 
+
+describe each loading case and what they are simulating, what the boundary conditions were implemented to ensure the system wasnt underdefined
+
+insert plots of the undeformedsetup and the deformed for each case. 
+
+for each case, make latex table to tabulate deflections at each node, and stresses at each element. in the table, emphasize the largest stress value (highlight or bold)
+
+Problem2
+--------
+galerkin FEM code with quad elements was modified from hw8, and referencing the solution code for hw8.
+Chose to model the top panel (element 7) as a 2D panel in plane stress. 
+
+nominal pressure of 1MPa was selected to be applied as a traction in 2D for three cases. its extreme for aero loading but conservatively high estimate 
+explain each of the 3 cases - where the traction was applied, in what direction, and what bc was implemented 
+
+explain that these three cases were run with 10, 100, 1000 elements for a convergence study. 
+for each case, tabulate the following for nelem = 10, 100, 1000:
+max deflection  
+maximum stress 
+
+provide sample undeformed plot and deformed plot for one of the cases, in addition to the stress stack figure. 
+
+Problem3
+--------
+The panel was modelled as a CFRP composite, which has orthotropic properties, instead of isotropic aluminum. 
+explain the problem setup of having to test multiple arbitrary traction directions on the right edge to find the best fiber orientation to minimize stress. 
+Prove its true by tabulating values from the analysis, reference the compositematerials book (actually add this reference to the .bibtex) for the composites theory. 
+
+
+PART2
+"Ask AI to do Part 1 of your project. Compare with your own work, report your findings, determine its accuracy. Provide your prompt. How do you think LLMs should be used in the engineering design and analysis process? (2 pgs)"
+
+write some prompt preamble for me saying that i provided you with context for predefined geometry for the 3d hex truss and for the panel geometry. 
+
+Solve problem 1: given the 3 loading cases described, model the hexagonal frame using the direct method of trusses in 3d. apply the point loads and boundary conditions defined in each case onto the frame, and solve for deflections and stresses for each case. 
+Create 2 sets of plots for each case - one that shows the undeformed configuration of the 3D truss, labelling boundary conditions and applied loads. Then a deformed configuration of the 3D truss with each element colored by stress value. 
+
+Solve problem 2: given the 3 loading cases described, and the geometry for the top panel (element 7), solve using the galerkin FEM appraoch with quad elements. output the deflections, stress distribution, and maximum stress. For each case, run a mesh with n=10, 100, 1000 elements. 
+Create 3 sets of plots for each case - one of the undeformed geometry with boundary conditions and tractions labelled, one with deformed mesh scaled up to see the difference against the undeformed mesh. Third, contour plots of stress values (sigma_x, sigma_y, sigma_vonmises) in the panel.  
+Implement functionality to perform a convergence study for each case comparing maximum stress values for n = 10, 100, 1000 elements. 
+
+Solve problem 3: given the traction orientations provided, model the panel as CFRP composite following chapter 6 of Barbero's textbook, and slides 23-27 of project lecture pdf. 
+implement capability to model the panel with orthotropic properties instead of isotropic. Solve for stresses for each traction direction, and test various fiber angles. choose the fiber orientiation that minimizes stress due to tension in the +x direction, and for arbitrary tractions on the right edge. 
+implement plotting capability to compare maximum stresses given different fiber orientations in increments of 5 degrees, for the first case (+ x traction) and second case (arbitrary traction directions)
+This visualization will justify selection of fiber orientation for each case. 
+
+

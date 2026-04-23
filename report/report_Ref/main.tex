@@ -1,0 +1,288 @@
+% Imports packages 
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage[hidelinks]{hyperref}
+\usepackage{ragged2e}
+\usepackage{amsmath}
+\usepackage[margin=1in]{geometry}
+\usepackage{pdfpages}
+\usepackage{subcaption}
+\usepackage{setspace}
+\usepackage{listings}
+\usepackage[inkscapelatex=false]{svg}
+\usepackage{pdfpages}
+\usepackage{float}
+\usepackage{bm}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage[dvipsnames]{xcolor}
+\usepackage[utf8]{inputenc}
+% \usepackage{pagecolor}
+% \pagecolor{pink}
+\usepackage{siunitx}
+\setlength{\parindent}{15pt}
+
+% Formatting for inputting python code
+\definecolor{commentgreen}{RGB}{14,120,0}
+\lstdefinestyle{pythonstyle}{
+  basicstyle=\scriptsize, 
+  commentstyle=\color{commentgreen},
+  keywordstyle=\bf\color{blue},
+  language=python, 
+  frame=shadowbox,
+  rulesepcolor=\color{black},
+  flexiblecolumns=true,
+  extendedchars=false,
+  showstringspaces=false,
+  keepspaces=true,
+  % I added arguments below
+  breaklines=true,
+  breakatwhitespace=false,
+  numbers=left,
+  % numberstyle=\tiny\color{gray},
+  numberstyle=\color{gray},
+  stepnumber=1,
+  numbersep=5pt,
+}
+\lstset{style=pythonstyle}
+
+% Begins document
+\title{AE588 Homework 6}
+\author{Maximilian Mah}
+\date{November 18, 2025}
+
+\begin{document}
+\onehalfspacing     % 1.5 spacing
+
+\maketitle
+\thispagestyle{empty}
+\newpage
+
+\section*{Problem 6.1}
+
+The DIRECT method was implemented. The DIRECT (DIviding RECTangles) algorithm is a deterministic, derivative-free global optimization method that avoids the need for user-defined parameters such as step sizes or Lipschitz constants. The method begins by normalizing the design space to the unit hypercube and evaluating the objective at its center. It then adaptively partitions this hypercube into smaller axis-aligned rectangles. Instead of relying on a known Lipschitz constant, DIRECT implicitly considers all possible Lipschitz constants: it compares each rectangle’s center value with its geometric size (half-diagonal), selecting those rectangles that could contain the global minimum for some valid Lipschitz constant. These rectangles are called potentially optimal, and only they are subdivided.
+
+Subdivision is performed by trisecting a rectangle along its longest coordinate direction. To avoid repeatedly refining the same dimension, DIRECT breaks ties by selecting the dimension that has been split the fewest times. This produces a balanced adaptive mesh composed of rectangles of many shapes and sizes, which naturally balances global exploration (large rectangles spread across the domain) with local refinement (small rectangles clustered around promising regions). Because the algorithm continues refining rectangles of shrinking diameter throughout the domain, DIRECT is guaranteed to converge to the global optimum under mild continuity assumptions, and does so without gradients, heuristic tuning, or prior knowledge of smoothness parameters.
+
+\section*{Problem 6.2}
+\subsection*{Part (a)}
+
+Domain bounds of $x_\text{lower} = (-2.0, -1.0)$ and $x_\text{upper} = (2.0, 3.0)$ were set for the DIRECT algorithm, with a maximum iteration cap of 30 to keep runtime reasonable instead of setting convergence criteria to use the smallest characteristic length of hyperrectangles. The DIRECT algorithm found the minimum of the bean function $f(x^*) = 0.0919438\textcolor{red}{32}$ at $x^* = (1.213\textcolor{red}{50065}, 0.824\textcolor{red}{21379})$, requiring 1174 function evaluations. In comparison, \texttt{scipy.optimize}'s BFGS algorithm found the bean function minimum of $f(x^*) = 0.0919438\textcolor{blue}{16}$ at $x^* = x* = (1.213\textcolor{blue}{41166}, 0.824\textcolor{blue}{12262})$, with the starting point set at the center of the domain, $x_0 = (0.0, 1.0)$ to mimic how the DIRECT algorithm evaluates the center of the normalized hyperrectangle in the first iteration. BFGS converged in only 8 iterations, requiring 10 function evaluations. Obviously, for a smooth, continuous unimodal objective function, BFGS is computationally cheaper and more accurate than a gradient-free method like DIRECT. Both algorithms effectively found the global minimum of the bean function, which is $f(x^*) = 0.09194 \ \text{at} \ x^* = (1.21314, 0.82414)$ as provided in Appendix D of the \texttt{mdobook}. 
+
+\begin{figure}[H]
+\centering
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includesvg[scale=0.45]{figures/bean_DIRECT_history.svg}
+        \caption{DIRECT method}
+        \label{fig:directbean}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includesvg[scale=0.45]{figures/bean_BFGS_path.svg}
+        \caption{BFGS (via $\texttt{scipy.minimize}$)}
+        \label{fig:BFGSbean}
+    \end{subfigure}
+\caption{Optimization history and path plots for bean function}
+\label{fig:beancomp}
+\end{figure}
+
+\autoref{fig:directbean} shows all DIRECT rectangles and function evaluation points in red (centers of subdivided hyperrectangles that were found to be potentially optimal) overlaid atop the bean function contours. The black star indicates the minimum found by the DIRECT method. \autoref{fig:BFGSbean} shows the optimization path plot taken by the BFGS algorithm. 
+
+\subsection*{Part (b)}
+
+Random noise with a magnitude of $10^{-4}$ was added to the bean function and its gradient using a Gaussian distribution to investigate its impact on the convergence behavior of the DIRECT method. In practice, caching functionality was implemented in python to return the same value of noise at the same evaluation point instead of adding different stochastic noise (random jitter) with each function call. This was important for the DIRECT method because it evaluates the same center points of potentially optimal hyperrectangles multiple times to compare function values across iterations. A noisy function should still behave deterministically; ie. evaluating the same point gives the same noisy value. 
+
+DIRECT remained robust under small noise ($10^{-4}$), because it does not compute gradients and is therefore much less sensitive to small, frequent changes in slope (and curvature) than gradient-based algorithms. Again, the DIRECT algorithm required 1174 iterations with a maximum iteration cap of 30 iterations. The number of function evaluations is unchanged because DIRECT subdivides rectangles deterministically. It found the optimum of $f(x^*) = 0.0917519$ at $x^* = (1.218107, 0.82787177)$, which differs very slightly to the original [smooth] bean function due to the noise. \autoref{fig:noisy} shows the DIRECT method's search history of the noisy bean function, which is virtually identical to \autoref{fig:directbean}. 
+
+\begin{figure}[H]
+\centering
+    \centering
+    \includesvg[scale=0.5]{figures/bean_noisy_DIRECT_history.svg}
+    \caption{DIRECT method search history for bean function with noise}
+    \label{fig:noisy}
+\end{figure}
+
+These results were compared to \texttt{scipy.minimize}'s BFGS algorithm again, revealing that the small noise made BFGS slightly less efficient. BFGS found the optimum of of $f(x^*) = 0.09172941$ at $x^* = (1.21345127, 0.82416601)$ in 9 iterations requiring 33 function evaluations compared to the original bean function. 
+In conclusion, DIRECT’s global search structure makes it less sensitive to noise than BFGS, though the final accuracy is limited by noise magnitude.
+
+\subsection*{Part (c)}
+
+The bean function was made discontinuous by adding the function 
+\[
+\Delta f = 4 \left\lceil \sin(\pi x_1)\,\sin(\pi x_2) \right\rceil .
+\]
+
+as in Example 7.9 of the \texttt{mdobook}. This term creates a grid of discontinuous jumps of height 4 across the domain. The resulting objective function has the same global minimizer as the smooth Bean function, but the landscape becomes highly non-smooth and resembles a checkerboard pattern when plotted. This checkerboard steps pattern tests the sensitivity of the DIRECT method and \texttt{scipy.optimize}'s BFGS when applied to discontinuous functions. 
+
+\begin{figure}[H]
+\centering
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includesvg[scale=0.45]{figures/bean_checkerboard_DIRECT_history.svg}
+        \caption{DIRECT method}
+        \label{fig:directcheck}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includesvg[scale=0.45]{figures/bean_checkerboard_BFGS_path_stuck.svg}
+        \caption{BFGS (via $\texttt{scipy.minimize}$)}
+        \label{fig:BFGScheck}
+    \end{subfigure}
+\caption{Optimization history and path plots for checkerboard bean function}
+\label{fig:checkcomp}
+\end{figure}
+
+DIRECT found virutally the same optimum of $f(x^*) = 0.09194382$ at $x^* = (1.21343291, 0.82414605)$ with the same iteration cap of 30 and requiring 1174 function evaluations. DIRECT performs well on this function because it does not use gradients and does not assume smoothness. The algorithm continues to refine potentially optimal rectangles globally and is not trapped by the discontinuities, as shown in \autoref{fig:directcheck}. DIRECT still converges toward the global minimum within a similar number of function evaluations as in the smooth case.
+
+Gradient-based BFGS, on the other hand, cannot be applied reliably because the checkerboard term is discontinuous and the gradient is undefined. This matches the behavior reported in Example 7.9, where gradient-free methods (DIRECT, GPS, GA, PSO) can still locate the global minimum, while gradient-based methods fail without multistart. \autoref{fig:BFGScheck} demonstrates how BFGS gets stuck in the discontinuity wall depending on the starting point, because it requires smooth gradients. The checkerboard modification creates flat plateaus and infinite-slope jumps. The gradient is undefined at the boundaries and zero inside each plateau. Here the starting point was $x_0 = (-0.25, 0.5)$. The algorithm could only take one step, requiring 214 function evaluations and settling at the point $x = (-0.0068, 0.395)$.
+
+DIRECT is much more robust than BFGS for the discontinuous bean function, which cannot follow the jagged derivative-free landscape. 
+
+\subsection*{Part (d)}
+
+The function below was minimized with the DIRECT method and \texttt{scipy} BFGS. 
+
+\[
+f(x_1, x_2, x_3) = |x_1| + 2|x_2| + x_3^2 .
+\]
+
+For the DIRECT method, domain bounds of $x_\text{lower} = (-2, -2, -2)$ and $x_\text{upper} = (2, 2, 2)$ were used. The DIRECT Method was able to converge at the minimum $f(x^*) = 0$ at $x^* = (0, 0, 0)$ in 40 iterations with 2149 function calls. 
+
+I expected BFGS to struggle because the function is non-differentiable at $x_1 = 0, \ x_2 = 0$. However, it converged to a minimum of $f(x^*) = 0.182138$ at $x^* = (0.0790287, 0.05107423, -0.03099328)$  in 4 iterations with 58 function calls. 
+
+The DIRECT method finds the true minimum on this nonsmooth convex function, $f(x^*) = 0$ at $x^* = (0, 0, 0)$, though it takes many function evaluations. BFGS converges quickly to a point near the optimum but not exactly at it.
+
+\section*{Problem 6.3}
+
+The effect of increasing problem dimensionality was studied using the $n$-dimensional Rosenbrock function: 
+
+\[
+f(x) = \sum_{i=1}^{n-1} \left( 100(x_{i+1} - x_i^2)^2 + (1 - x_i)^2 \right).
+\]
+
+The problem was solved using 
+\begin{enumerate}
+    \item DIRECT algorithm, gradient free (manually implemented) 
+    \item Nelder-Mead algorithm, gradient free (\texttt{scipy.optimize})
+    \item BFGS with finite difference, gradient-based (\texttt{scipy.optimize})
+    \item BFGS with analytic gradients, gradient-based (\texttt{scipy.optimize})
+\end{enumerate}
+
+The minimization was repeated for $n = 2, 4, 8, 16, 32, 64$ with all four algorithms, and the number of function calls required was plotted against the number of design variables ($n$) as shown in \autoref{fig:6_3_fcalls}. The data is also provided in tabular format in \autoref{tab:fvn}.
+
+\begin{figure}[H]
+\centering
+    \centering
+    \includesvg[scale=0.5]{figures/prob6_3_fcalls_vs_n.svg}
+    \caption{Computational expense vs. problem dimensionality}
+    \label{fig:6_3_fcalls}
+\end{figure}
+
+\begin{table}[h!]
+\centering
+\caption{Performance of four optimization methods on the $n$-dimensional Rosenbrock function}
+\label{tab:rosenbrock_results}
+\renewcommand{\arraystretch}{1.3}
+
+\begin{tabular}{c|cc|cc|cc|cc}
+\hline
+\textbf{Dim.\ $n$} 
+& \multicolumn{2}{c|}{\textbf{DIRECT}} 
+& \multicolumn{2}{c|}{\textbf{Nelder--Mead}} 
+& \multicolumn{2}{c|}{\textbf{BFGS (FD)}} 
+& \multicolumn{2}{c}{\textbf{BFGS (analytic)}} \\
+\cline{2-9}
+& \textbf{Evals} & $f^*$ 
+& \textbf{Evals} & $f^*$
+& \textbf{Evals} & $f^*$
+& \textbf{Evals} & $f^*$ \\
+\hline
+
+2  & 8143  & $4.44\times10^{-14}$
+   & 176   & $3.79\times10^{-18}$
+   & 219   & $1.89\times10^{-11}$
+   & 36    & $2.98\times10^{-23}$ \\
+
+4  & 13537 & $1.13\times10^{-6}$
+   & 516   & $1.79\times10^{-17}$
+   & 417   & $4.50\times10^{-11}$
+   & 44    & $9.43\times10^{-23}$ \\
+
+8  & 16483 & $3.4157$
+   & 2056  & $1.89\times10^{-16}$
+   & 847   & $4.18\times10^{-11}$
+   & 68    & $5.72\times10^{-20}$ \\
+
+16 & 15286 & $12.5290$
+   & 6490  & $2.2807$
+   & 2307  & $6.14\times10^{-11}$
+   & 94    & $6.78\times10^{-20}$ \\
+
+32 & 16372 & $30.6333$
+   & 5950  & $26.4004$
+   & 4203  & $6.27\times10^{-11}$
+   & 128   & $2.12\times10^{-19}$ \\
+
+64 & 18706 & $63.0$
+   & 5655  & $1727.5763$
+   & 11517 & $6.80\times10^{-11}$
+   & 179   & $2.11\times10^{-19}$ \\
+
+\hline
+\label{tab:fvn}
+\end{tabular}
+\end{table}
+
+An iteration cap of 100 was set for the DIRECT method to keep the runtime reasonable, while maximum iterations for the remaining off-the-shelf algorithms was set to 5000. From \autoref{fig:6_3_fcalls}, it is obvious that the manual implementation of DIRECT requires the most function evaluations with increasing problem dimensionality, though the curve remains relatively level since the algorithm is limited to performing 100 iterations. Nelder-Mead, another gradient-free algorithm, requires the second highest function evaluations with increasing problem dimensionality. BFGS, which is gradient-based, makes most efficient use of function evaluations when probided with analytic gradients instead of relying on finite differencing. The initial condition for the off-the-shelf algorithms was set to an $n$-dimensional vector of 2's. 
+
+%------------------------------------------------------------------
+% \appendix
+% \section*{Appendix}
+
+\end{document}
+%Examples --------------------------------------------------------------------------------------
+% \title{AE423 Homework 1 \\ Topic}
+
+% \begin{align}
+%     f(x) = \sum_{i=1}^{n-1} \left( 100 \left( x_{i+1} - x_i^2 \right)^2 + \left( 1 - x_i \right)^2 \right) \label{eq:rosenbrock}
+% \end{align}
+
+% \begin{figure}[H]
+% \centering
+%     \centering
+%     \includesvg[scale=0.6]{figures/prob6_3.svg}
+%     \caption{Rosenbrock function calls for various methods and dimensions}
+%     \label{fig:6_3_fcalls}
+% \end{figure}
+
+% \begin{figure}[H]
+% \centering
+%     \begin{subfigure}{0.49\textwidth}
+%         \centering
+%         \includesvg[scale=0.3]{figures/search_history_f_bean_checkerboard.svg}
+%         \caption{Normal zoom}
+%         \label{fig:6_ba_sh_checkerboard_bean}
+%     \end{subfigure}
+%     \hfill
+%     \begin{subfigure}{0.49\textwidth}
+%         \centering
+%         \includesvg[scale=0.3]{figures/search_history_f_bean_checkerboard_zoomed.svg}
+%         \caption{Zoomed in}
+%         \label{fig:6_ba_sh_bean_checkerboard_zoomed}
+%     \end{subfigure}
+% \caption{Checkerboard bean function search history}
+% \label{fig:6_ba_sh_checkerboard_both}
+% \end{figure}
+
+% \lstinputlisting[
+%   language=python,      
+%   linerange=3-34,
+%   linewidth=1.0\linewidth,
+%   caption={Examples from forward mode AD implementation},
+%   label=lst:forward-ad,
+%   % basicstyle=\tiny,
+% ]{ol.py}
+
