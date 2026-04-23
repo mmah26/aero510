@@ -1,0 +1,9 @@
+CFRP Effective Orthotropic Properties (UD lamina)
+E1_pa=1.45848000e+11
+E2_pa=1.59025903e+10
+G12_pa=4.33907729e+09
+nu12=2.72000000e-01
+
+Recommended Fiber Orientation
+case1_plus_x_theta_deg=0.0, max_sigma_vm_pa=1.00304396e+06
+arbitrary_cases_2_to_5_theta_deg=65.0, worst_case_sigma_vm_pa=3.50785643e+07

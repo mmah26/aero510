@@ -396,3 +396,20 @@ def plot_case_convergence(out_dir, case_tag, case_title, elem_counts, sx_vals, s
 
     fig.savefig(out_dir / f"{case_tag}_convergence_stress.png", dpi=200, bbox_inches="tight")
     plt.close(fig)
+
+
+def plot_orientation_sweep(out_dir, case_tag, case_title, angles_deg, sx_vals, sy_vals, svm_vals):
+    fig, ax = plt.subplots(figsize=(7.2, 4.4))
+    ax.plot(angles_deg, sx_vals, marker="o", lw=1.6, label=r"$\max|\sigma_x|$")
+    ax.plot(angles_deg, sy_vals, marker="s", lw=1.6, label=r"$\max|\sigma_y|$")
+    ax.plot(angles_deg, svm_vals, marker="^", lw=1.6, label=r"$\max\sigma_{vm}$")
+
+    ax.set_xlabel("Fiber orientation [deg]")
+    ax.set_ylabel("Stress [Pa]")
+    ax.set_title(f"{case_title}: Stress vs Fiber Orientation")
+    ax.grid(True, ls=":", alpha=0.4)
+    ax.legend(frameon=False)
+    ax.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+
+    fig.savefig(out_dir / f"{case_tag}_orientation_sweep.png", dpi=200, bbox_inches="tight")
+    plt.close(fig)

@@ -61,6 +61,65 @@ def D_matrix(E, nu, plane="stress"):
     raise ValueError("plane must be 'stress' or 'strain'.")
 
 
+def orthotropic_Q_plane_stress(E1, E2, G12, nu12):
+    """
+    Reduced in-plane stiffness matrix Q (material axes 1-2) for plane stress.
+    Uses engineering shear gamma_12 convention.
+    """
+    nu21 = nu12 * E2 / E1
+    den = 1.0 - nu12 * nu21
+    if den <= 0.0:
+        raise ValueError("Invalid orthotropic properties: 1 - nu12*nu21 must be > 0.")
+    Q11 = E1 / den
+    Q22 = E2 / den
+    Q12 = nu12 * E2 / den
+    Q66 = G12
+    return np.array(
+        [
+            [Q11, Q12, 0.0],
+            [Q12, Q22, 0.0],
+            [0.0, 0.0, Q66],
+        ],
+        dtype=float,
+    )
+
+
+def rotate_Qbar_plane_stress(Q, theta_deg):
+    """
+    Transform reduced stiffness Q from material axes (1-2) to global axes (x-y).
+    theta_deg: fiber angle measured from +x toward +y.
+    """
+    t = np.deg2rad(theta_deg)
+    m = np.cos(t)
+    n = np.sin(t)
+
+    Q11 = Q[0, 0]
+    Q22 = Q[1, 1]
+    Q12 = Q[0, 1]
+    Q66 = Q[2, 2]
+
+    m2 = m * m
+    n2 = n * n
+    m4 = m2 * m2
+    n4 = n2 * n2
+
+    Qb11 = Q11 * m4 + 2.0 * (Q12 + 2.0 * Q66) * m2 * n2 + Q22 * n4
+    Qb22 = Q11 * n4 + 2.0 * (Q12 + 2.0 * Q66) * m2 * n2 + Q22 * m4
+    Qb12 = (Q11 + Q22 - 4.0 * Q66) * m2 * n2 + Q12 * (m4 + n4)
+    Qb16 = (Q11 - Q12 - 2.0 * Q66) * m * m2 * n - (Q22 - Q12 - 2.0 * Q66) * m * n2 * n
+    Qb26 = (Q11 - Q12 - 2.0 * Q66) * m * n2 * n - (Q22 - Q12 - 2.0 * Q66) * m * m2 * n
+    Qb66 = (Q11 + Q22 - 2.0 * Q12 - 2.0 * Q66) * m2 * n2 + Q66 * (m4 + n4)
+
+    return np.array(
+        [
+            [Qb11, Qb12, Qb16],
+            [Qb12, Qb22, Qb26],
+            [Qb16, Qb26, Qb66],
+        ],
+        dtype=float,
+    )
+
+
 def gauss2x2():
     g = 1.0 / np.sqrt(3.0)
     gps = np.array([[-g, -g], [g, -g], [g, g], [-g, g]], dtype=float)
@@ -121,11 +180,30 @@ class DirectFEMQuad:
         self.dofs = np.arange(self.ndof, dtype=int).reshape(self.Nn, self.ndim)
 
         props = self.case["properties"]
-        self.E = float(props["E"])
-        self.nu = float(props["nu"])
         self.t = float(props["t"])
         self.plane = props.get("plane", "stress")
-        self.D = D_matrix(self.E, self.nu, self.plane)
+        self.theta_deg = float(props.get("theta_deg", 0.0))
+
+        if "D" in props:
+            self.D = np.asarray(props["D"], dtype=float)
+            if self.D.shape != (3, 3):
+                raise ValueError("properties['D'] must be a 3x3 matrix.")
+            self.material_model = "custom_D"
+        elif all(k in props for k in ("E1", "E2", "G12", "nu12")):
+            if self.plane != "stress":
+                raise ValueError("Orthotropic input currently supports only plane='stress'.")
+            self.E1 = float(props["E1"])
+            self.E2 = float(props["E2"])
+            self.G12 = float(props["G12"])
+            self.nu12 = float(props["nu12"])
+            self.Q = orthotropic_Q_plane_stress(self.E1, self.E2, self.G12, self.nu12)
+            self.D = rotate_Qbar_plane_stress(self.Q, self.theta_deg)
+            self.material_model = "orthotropic"
+        else:
+            self.E = float(props["E"])
+            self.nu = float(props["nu"])
+            self.D = D_matrix(self.E, self.nu, self.plane)
+            self.material_model = "isotropic"
 
         self.body_force = np.asarray(self.case.get("body_force", [0.0, 0.0]), dtype=float)
         if self.body_force.size != 2:
