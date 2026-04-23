@@ -1,0 +1,4 @@
+max_u_m=9.46424276e-03
+max_abs_sigma_x_pa=3.98761794e+07
+max_abs_sigma_y_pa=4.82312302e+06
+max_sigma_vm_pa=3.80191898e+07

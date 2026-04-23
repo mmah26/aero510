@@ -379,3 +379,20 @@ def save_case_plots(out_dir, case_tag, case, out):
         shared_scale=False,
     )
     return scale
+
+
+def plot_case_convergence(out_dir, case_tag, case_title, elem_counts, sx_vals, sy_vals, svm_vals):
+    fig, ax = plt.subplots(figsize=(7, 4.2))
+    ax.plot(elem_counts, sx_vals, marker="o", lw=1.6, label=r"$\max|\sigma_x|$")
+    ax.plot(elem_counts, sy_vals, marker="s", lw=1.6, label=r"$\max|\sigma_y|$")
+    ax.plot(elem_counts, svm_vals, marker="^", lw=1.6, label=r"$\max\sigma_{vm}$")
+
+    ax.set_xlabel("Number of elements")
+    ax.set_ylabel("Stress [Pa]")
+    ax.set_title(f"{case_title}: Stress Convergence")
+    ax.grid(True, ls=":", alpha=0.4)
+    ax.legend(frameon=False)
+    ax.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+
+    fig.savefig(out_dir / f"{case_tag}_convergence_stress.png", dpi=200, bbox_inches="tight")
+    plt.close(fig)
