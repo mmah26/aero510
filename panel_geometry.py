@@ -1,27 +1,21 @@
 import numpy as np
 
-# Top-panel dimensions from Problem 1 geometry
-FT_TO_M = 0.3048
+# Input dimensions provided in inches, converted to SI (meters).
 IN_TO_M = 0.0254
+L_IN = 56.0
+W_IN = 4.0
+T_IN = 0.5
 
-L_FT = 56.0 / 12.0
-W_FT = 4.0 / 12.0
-T_FT = 0.5 / 12.0
+L_M = L_IN * IN_TO_M
+W_M = W_IN * IN_TO_M
+T_M = T_IN * IN_TO_M
 
-L_M = L_FT * FT_TO_M
-W_M = W_FT * FT_TO_M
-T_M = T_FT * FT_TO_M
-
-E_AL = 70e9
+# Material properties (SI)
+E_AL = 70.0e9  # Pa
 NU_AL = 0.3
 
 
-def get_panel_dimensions():
-    """Return panel dimensions in SI units."""
-    return {"L": L_M, "W": W_M, "t": T_M}
-
-
-def generate_rect_quad_mesh(L, W, nx, ny):
+def gen_quad_mesh(L, W, nx, ny):
     """
     Structured Quad4 mesh on a rectangle centered at origin.
     Node ordering in each element is CCW:

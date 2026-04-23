@@ -187,7 +187,8 @@ class DirectFEMQuad:
             else:
                 dX_dq = dN_dxi @ xy_e
             Jline = np.linalg.norm(dX_dq)
-            fe += (Nmat.T @ tvec) * Jline * self.t
+            # tvec is line traction [N/m], integrated along edge length [m].
+            fe += (Nmat.T @ tvec) * Jline
 
         if edge == "right":
             for eta in gp:
