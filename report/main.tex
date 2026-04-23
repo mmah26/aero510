@@ -1,5 +1,6 @@
 \documentclass{article}
 \usepackage{graphicx}
+\usepackage{svg}
 \usepackage[hidelinks]{hyperref}
 \usepackage{amsmath}
 \usepackage[margin=1in]{geometry}
@@ -14,6 +15,33 @@
 \setlength{\floatsep}{6pt}
 \setlength{\intextsep}{6pt}
 
+\usepackage{listings}
+\usepackage{xcolor}
+
+% Formatting for inputting python code
+\definecolor{commentgreen}{RGB}{14,120,0}
+\lstdefinestyle{pythonstyle}{
+  basicstyle=\scriptsize, 
+  commentstyle=\color{commentgreen},
+  keywordstyle=\bf\color{blue},
+  language=python, 
+  frame=shadowbox,
+  rulesepcolor=\color{black},
+  flexiblecolumns=true,
+  extendedchars=false,
+  showstringspaces=false,
+  keepspaces=true,
+  % I added arguments below
+  breaklines=true,
+  breakatwhitespace=false,
+  numbers=left,
+  % numberstyle=\tiny\color{gray},
+  numberstyle=\color{gray},
+  stepnumber=1,
+  numbersep=5pt,
+}
+\lstset{style=pythonstyle}
+
 \title{AERO 510 Final Project Report\\3D Truss and 2D Galerkin FEM Analysis of a Delivery UAV Structure}
 \author{Maximilian Mah}
 \date{April 2026}
@@ -24,7 +52,7 @@
 \maketitle
 \thispagestyle{empty}
 \begin{center}
-\includegraphics[width=0.56\textwidth]{../figures/amazon-prime-air-remars-june-2019-1.jpg}\\[4pt]
+\includegraphics[width=0.56\textwidth]{figures/amazon-prime-air-remars-june-2019-1.jpg}\\[4pt]
 \small Amazon MK27-2 Delivery Drone \cite{techmonitor_mk27_2019}
 \end{center}
 \clearpage
@@ -33,44 +61,82 @@
 \twocolumn
 
 \section*{Background and Model Setup}
-This project implemented two structural analysis frameworks for a UAV inspired by Amazon's MK27-2 drone: (i) the direct stiffness method for a 3D truss and (ii) a Galerkin finite element formulation using 4-node quadrilateral elements for a 2D panel. The motivation is lightweight structural assessment for parcel-delivery aircraft concepts that have received significant public and industrial attention \cite{tarasov_cnbc_2022,daleo_freightwaves_2022,oitzman_robotreport_2022,grossman_popmech_2019,muller_axios_2022}. Principal hex-frame dimensions were set from MK27-2 public references \cite{faa_mk27_2022,bou_graphicnews_2022}. The geometry was recreated in Rhino 8 and reduced to a tractable structural idealization: spoke attachment locations were simplified and the hub parcel volume was omitted. Figure~\ref{fig:modeling_setup} shows the rendered concept and 2D truss-node/element abstraction used for FEM setup.
+Autonomous aircraft concepts have received significant public and industrial attention; one of these was Amazon's hexagonal MK27-2 parcel-delivery drone in late 2022 \cite{tarasov_cnbc_2022,daleo_freightwaves_2022,oitzman_robotreport_2022,grossman_popmech_2019,muller_axios_2022}. Two structural finite element methods (FEM) were utilized to conduct simplified structural analysis on a UAV inspired by the MK27-2: the direct stiffness method for a 3D truss and a Galerkin finite element formulation using 4-node quadrilateral elements for a 2D panel. Principal hex-frame dimensions were found from public references \cite{faa_mk27_2022,bou_graphicnews_2022}. The geometry was modeled in Rhino 8 and reduced to a tractable structural idealization. Spoke attachment locations were simplified and the hub parcel volume was omitted. Figure~\ref{fig:modeling_setup} shows the rendered concept and 3D truss representation used for Direct FEM setup.
 
-For the baseline metal design, aluminum properties were used: $E=70$ GPa and $\nu=0.3$. Member widths were set to 4 in (outer hex edges) and 2 in (spokes), with thickness 0.5 in. A structural mass check was performed from total truss-member volume. The resulting structural weight was 69.07 lb, below the 90 lb vehicle target, leaving margin for unmodeled components and payload.
+For the baseline metal design, aluminum properties were used: $E=70$ GPa and $\nu=0.3$. Hexagonal frame widths were set to 4 in ($\approx 0.1 m$), inner spoke widths were set to 2 in ($\approx 0.05 m$), and thickness was chosen as 0.5 in ($\approx 0.013 m$). A structural mass check was performed from total truss-member volume. The resulting structural weight was 69.07 lbf ($\approx 306 N$), below the 90 lb ($\approx 400 N$) vehicle target, leaving margin for unmodeled components and payload. 
 
-\section*{Problem 1: 3D Truss Direct FEM}
-The truss solver was adapted from lecture/sample direct-stiffness workflows and generalized to 3D assembly/solution. A key modeling detail was a 2 in hub offset in the $z$ direction. If all nodes are coplanar ($z=0$), all member direction cosines along $z$ are zero, so the assembled truss has no axial stiffness coupling to $u_z$ DOFs. In that planar limit, out-of-plane loading cannot produce a valid 3D truss response. The nonzero hub offset makes spoke members carry axial components in $z$, enabling true 3D load transfer.
-
-Three load cases were analyzed:
-\begin{enumerate}
-    \setlength{\itemsep}{1pt}
-    \setlength{\parskip}{0pt}
-    \setlength{\parsep}{0pt}
-    \item \textbf{Case 1 (mid-flight payload at hub):} a $-5$ lbf point load is applied at node 0 in $z$. This represents a downward package/gravity-driven hub load while the outer frame is treated as rigidly supported. To realize that conservative support assumption, nodes 1--6 are fully fixed: $u_x=u_y=u_z=0$.
-    \item \textbf{Case 2 (handling/pull event):} a $+225$ lbf pull is applied at node 1 in $x$, while node 4 is held. This approximates a one-sided pull/drag event during handling or snag recovery. Boundary conditions were selected to retain the physical pull direction while eliminating rigid-body modes: node 4 has $u_x=u_y=u_z=0$; node 1 has $u_y=u_z=0$ so the applied force drives primarily axial $x$ response; node 0 has $u_y=0$; nodes 2,3,5,6 have $u_z=0$.
-    \item \textbf{Case 3 (snagged vehicle, thrusting to recover):} node 5 is treated as a snag/contact point and fixed in all DOFs ($u_x=u_y=u_z=0$). A $+15$ lbf load in $z$ is applied at nodes 0,1,2,3,4,6 to represent upward thrust contributions from the remaining free arms. To model thrust-dominated motion and avoid unphysical in-plane drift, nodes 0,1,2,3,4,6 are constrained with $u_x=u_y=0$.
-\end{enumerate}
-
-These DOF selections were tuned to be kinematically stable while preserving the intended physical mechanism for each case. In particular, Case 2 and Case 3 require targeted partial constraints (rather than full-frame fixing) to remove rigid-body modes without suppressing the dominant deformation direction being studied.
-
-\begin{figure}[!t]
+\begin{figure}[!hb]
 \centering
 \begin{subfigure}{\linewidth}
 \centering
-\includegraphics[width=0.74\linewidth]{../figures/truss/hex_render.png}
+\includegraphics[width=0.8\columnwidth]{figures/truss/hex_render.png}
 \caption{Rhino rendering of UAV geometry.}
 \label{fig:modeling_rhino}
 \end{subfigure}
 \vspace{2pt}
 \begin{subfigure}{\linewidth}
 \centering
-\includegraphics[width=0.74\linewidth]{../figures/truss/hex_2D.png}
+\includesvg[width=0.8\columnwidth]{figures/truss/hex_2D.svg}
 \caption{2D truss geometry simplification.}
 \label{fig:modeling_hex}
 \end{subfigure}
-\caption{UAV geometry setup used for truss modeling.}
+\caption{UAV geometry used for truss modeling.}
 \label{fig:modeling_setup}
 \end{figure}
 
+\section*{3D Truss Direct FEM}
+The truss solver was adapted from provided sample code and generalized to 3D assembly/solution. A key modeling detail was a 2 in ($\approx 0.05 m$) hub offset in the $z$ direction. If all nodes are coplanar ($z=0$), all member direction cosines along $z$ are zero, so the assembled truss has no axial stiffness coupling to $u_z$ DOFs. In that planar limit, out-of-plane loading cannot produce a valid 3D truss response. The nonzero hub offset makes spoke members carry axial components in $z$, enabling true 3D load transfer. 
+
+Three load cases were analyzed:
+\begin{enumerate}
+    \setlength{\itemsep}{1pt}
+    \setlength{\parskip}{0pt}
+    \setlength{\parsep}{0pt}
+    \item \textbf{Case 1 (mid-flight payload at hub):} a $-5$ lbf ($\approx 22.25 N $) point load is applied at node 0 in $z$. This represents a downward package/gravity-driven hub load while the outer frame is treated as rigidly supported. To realize that conservative support assumption, nodes 1--6 are fully fixed: $u_x=u_y=u_z=0$.
+    \item \textbf{Case 2 (handling/pull event):} a $+225$ lbf ($\approx 1000 N $) pull is applied at node 1 in $x$, while node 4 is held. This approximates a one-sided pull/drag event during handling or snag recovery. Boundary conditions were selected to retain the physical pull direction while eliminating rigid-body modes: node 4 has $u_x=u_y=u_z=0$; node 1 has $u_y=u_z=0$ so the applied force drives primarily axial $x$ response; node 0 has $u_y=0$; nodes 2,3,5,6 have $u_z=0$.
+    \item \textbf{Case 3 (snagged vehicle, thrusting to recover):} node 5 is treated as a snag/contact point and fixed in all DOFs ($u_x=u_y=u_z=0$). A $+15$ lbf ($\approx 66.7 N$) load in $z$ is applied at nodes 0,1,2,3,4,6 to represent upward thrust contributions from the remaining free arms. To model thrust-dominated motion and avoid unphysical in-plane drift, nodes 0,1,2,3,4,6 are constrained with $u_x=u_y=0$.
+\end{enumerate}
+
+These DOF selections were tuned to be kinematically stable while preserving the intended physical mechanism for each case. In particular, Case 2 and Case 3 require targeted partial constraints (rather than full-frame fixing) to remove rigid-body modes without suppressing the dominant deformation direction being studied. \autoref{fig:prob1_allcases} shows undeformed truss geometry with applied loads and boundary condition labels (left column) and deformed truss geometry with labeled axial stresses (right column) for cases 1 - 3. \autoref{tab:p1_results} provides node displacements and element stresses for cases 1 - 3.
+
+% trim = left bottom right top
+\begin{figure*}[ph]
+\centering
+\begin{subfigure}[t]{0.49\textwidth}\centering
+\includegraphics[width=\linewidth,trim=24 28 8 100,clip]{figures/truss/case1_setup_undeformed.png}
+\caption{Case 1 setup}
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.49\textwidth}\centering
+\includegraphics[width=\linewidth,trim=26 28 8 100,clip]{figures/truss/case1_deform_stress.png}
+\caption{Case 1 deformed/stress}
+\end{subfigure}
+
+\begin{subfigure}[t]{0.49\textwidth}\centering
+\includegraphics[width=\linewidth,trim=24 28 8 100,clip]{figures/truss/case2_setup_undeformed.png}
+\caption{Case 2 setup}
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.49\textwidth}\centering
+\includegraphics[width=\linewidth,trim=26 28 8 100,clip]{figures/truss/case2_deform_stress.png}
+\caption{Case 2 deformed/stress}
+\end{subfigure}
+
+\begin{subfigure}[t]{0.49\textwidth}\centering
+\includegraphics[width=\linewidth,trim=24 28 8 100,clip]{figures/truss/case3_setup_undeformed.png}
+\caption{Case 3 setup}
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.49\textwidth}\centering
+\includegraphics[width=\linewidth,trim=26 28 8 100,clip]{figures/truss/case3_deform_stress.png}
+\caption{Case 3 deformed/stress}
+\end{subfigure}
+\caption{Problem 1 truss setup and deformed-stress responses for all three loading cases.}
+\label{fig:prob1_allcases}
+\end{figure*}
+\FloatBarrier
+
+% table for problem 1 displacements and stresses
 \begin{table}[!t]
 \centering
 \caption{Problem 1 displacements and stresses.}
@@ -80,7 +146,7 @@ These DOF selections were tuned to be kinematically stable while preserving the 
 \renewcommand{\arraystretch}{0.88}
 \begin{subtable}[t]{\columnwidth}
 \centering
-\caption{Problem 1 nodal deflection magnitude, $|u|$ [ft].}
+\caption{Nodal deflection magnitude, $|u|$ [ft].}
 \begin{tabular}{c c c c}
 \toprule
 Node & Case 1 & Case 2 & Case 3 \\
@@ -99,7 +165,7 @@ N6 & 0.000e+00 & 1.450e-06 & 2.073e-04 \\
 \vspace{2pt}
 \begin{subtable}[t]{\columnwidth}
 \centering
-\caption{Problem 1 element axial stress [Pa].}
+\caption{Element axial stress [Pa].}
 \begin{tabular}{c c c c}
 \toprule
 Element & Case 1 & Case 2 & Case 3 \\
@@ -123,47 +189,10 @@ E11 &  0.00 &  7666.37 & 0.00 \\
 \renewcommand{\arraystretch}{1.0}
 \end{table}
 
-\begin{figure*}[p]
-\centering
-\begin{subfigure}[t]{0.49\textwidth}\centering
-\includegraphics[width=\linewidth,trim=26 24 26 24,clip]{../figures/truss/case1_setup_undeformed.png}
-\caption{Case 1 setup}
-\end{subfigure}
-\hfill
-\begin{subfigure}[t]{0.49\textwidth}\centering
-\includegraphics[width=\linewidth,trim=26 24 26 24,clip]{../figures/truss/case1_deform_stress.png}
-\caption{Case 1 deformed/stress}
-\end{subfigure}
+\section*{2D Galerkin FEM (Isotropic)}
+The hw8 MATLAB script was adapted and broken into smaller analysis blocks. Separate helper functions were implemented for returning: shape functions $N$ and derivatives, jacobian matrix $J$ and its determinant, strain-displacement $B$ matrix, gauss-legendre integration points $\xi, \eta$ and weights $w$, isotropic constitutive matrix $D$ for plane stress or plane strain. Core solver functions were organized into \texttt{assembly} (global stiffness and load construction), \texttt{solve} (free-DOF system solution), and \texttt{postprocess} (element/nodal stresses and von Mises). Preprocessing of applied loads and boundary conditions was separated into separate helper functions, so each case could be defined compactly. The sign convention used for the panel is $+x$ to the right and $+y$ upwards. This differs from the instructions sign convention of $+y$ to the right and $+x$ downwards. 
 
-\begin{subfigure}[t]{0.49\textwidth}\centering
-\includegraphics[width=\linewidth,trim=26 24 26 24,clip]{../figures/truss/case2_setup_undeformed.png}
-\caption{Case 2 setup}
-\end{subfigure}
-\hfill
-\begin{subfigure}[t]{0.49\textwidth}\centering
-\includegraphics[width=\linewidth,trim=26 24 26 24,clip]{../figures/truss/case2_deform_stress.png}
-\caption{Case 2 deformed/stress}
-\end{subfigure}
-
-\begin{subfigure}[t]{0.49\textwidth}\centering
-\includegraphics[width=\linewidth,trim=26 24 26 24,clip]{../figures/truss/case3_setup_undeformed.png}
-\caption{Case 3 setup}
-\end{subfigure}
-\hfill
-\begin{subfigure}[t]{0.49\textwidth}\centering
-\includegraphics[width=\linewidth,trim=26 24 26 24,clip]{../figures/truss/case3_deform_stress.png}
-\caption{Case 3 deformed/stress}
-\end{subfigure}
-\caption{Problem 1 truss setup and deformed-stress responses for all three loading cases.}
-\label{fig:prob1_allcases}
-\end{figure*}
-\FloatBarrier
-
-\clearpage
-\section*{Problem 2: 2D Galerkin Quad FEM (Isotropic Aluminum Panel)}
-Using Homework 8 Galerkin-quad structure as baseline, the top panel was modeled as a 2D plane-stress domain. A nominal pressure of 1 MPa was converted to equivalent edge line traction ($q=p\,t$) for 2D application. While high for nominal aerodynamic loads, this was intentionally conservative for stress screening.
-
-Relative to the homework script style, the workflow was reorganized into smaller analysis blocks with single responsibilities. Core routines include \texttt{shape\_quad4} (shape functions/derivatives), \texttt{jacobian\_quad4} (mapping and derivative transform), \texttt{Bmat\_quad4} (strain-displacement matrix), \texttt{gauss2x2} (integration points/weights), \texttt{D\_matrix} (isotropic constitutive matrix), \texttt{assembly} (global stiffness and load construction), \texttt{solve} (free-DOF system solution), and \texttt{postprocess} (element/nodal stresses and von Mises). Boundary/load preprocessing was separated into \texttt{dirichlet\_bcs\_for\_edge} and \texttt{traction\_load}, so each case definition can remain compact and transparent.
+The top panel (element 7) was selected and modeled in 2D plane-stress with quad elements. A nominal pressure of 1 MPa was converted to equivalent edge line traction for 2D application. Though high for nominal aerodynamic loads, this was intentionally conservative for stress screening.
 
 Three cases were analyzed:
 \begin{enumerate}
@@ -172,17 +201,17 @@ Three cases were analyzed:
     \item \textbf{Case 3 (transverse edge loading):} bottom-edge traction in $-y$, with left and right edges fixed ($u_x=u_y=0$ on both). This represents a panel strip loaded downward between two constrained side boundaries, producing a different stress state than Cases 1--2.
 \end{enumerate}
 
-A mesh convergence sweep was performed at $\approx$10, 100, and 1000 elements for each case (9 solves total). Maximum $\sigma_x$, $\sigma_y$, and $\sigma_{vm}$ were tracked versus element count to assess discretization sensitivity before interpreting local stress features. Figure~\ref{fig:p2_convplots} and Table~\ref{tab:p2_conv} summarize the convergence trend for Case 2.
+\autoref{fig:p2_sample} and \autoref{fig:p2_stress_stack} show deformation and stress plots under load case 2 modelled with $N = 100$ elements. A mesh convergence sweep was performed at $\approx$10, 100, and 1000 elements for each case (9 solves total). Maximum $\sigma_x$, $\sigma_y$, and $\sigma_{vm}$ were tracked versus element count to assess discretization sensitivity before interpreting local stress features. Figure~\ref{fig:p2_convplots} and Table~\ref{tab:p2_conv} summarize the convergence trend for Case 2.
 
 \begin{figure}[H]
 \centering
 \begin{subfigure}[t]{\linewidth}\centering
-\includegraphics[width=\linewidth,trim=12 24 12 24,clip]{../figures/panel/case2_n100_undeformed.png}
+\includegraphics[width=\columnwidth,trim=12 24 12 24,clip]{figures/panel/case2_n100_undeformed.png}
 \caption{Undeformed mesh with BCs and traction}
 \end{subfigure}
 
 \begin{subfigure}[b]{\linewidth}\centering
-\includegraphics[width=\linewidth]{../figures/panel/case2_n100_deformed.png}
+\includegraphics[width=\columnwidth]{figures/panel/case2_n100_deformed.png}
 \caption{Deformed mesh}
 \end{subfigure}
 \caption{Problem 2 case 2 mesh (100 elements)}
@@ -191,14 +220,14 @@ A mesh convergence sweep was performed at $\approx$10, 100, and 1000 elements fo
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\linewidth]{../figures/panel/case2_n100_stress_stack.png}
+\includegraphics[width=\columnwidth]{figures/panel/case2_n100_stress_stack.png}
 \caption{Case 2 stress stack (100 elements).}
 \label{fig:p2_stress_stack}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\linewidth]{../figures/panel/case2_convergence_stress.png}
+\includegraphics[width=\columnwidth]{figures/panel/case2_convergence_stress.png}
 \caption{Case 2 stress convergence}
 \label{fig:p2_convplots}
 \end{figure}
@@ -228,23 +257,47 @@ Case & $n_\mathrm{elem}$ & $\max|u|$ [m] & $\max \sigma_{vm}$ [Pa] \\
 \end{table}
 \FloatBarrier
 
-\clearpage
-\section*{Problem 3: CFRP Orthotropic Panel}
+% \clearpage
+\section*{CFRP Orthotropic Panel}
+
+The panel was then reanalyzed as a unidirectional CFRP lamina under plane stress using orthotropic constitutive response \cite{barbero_composite_fea}. Constituents and volume fraction were set from lecture guidance: carbon fiber/epoxy with $V_f=0.60$, $E_f=241$ GPa, $\nu_f=0.2$, $E_m=3.12$ GPa, $\nu_m=0.38$. From Barbero Chapter 6 micromechanics, effective lamina constants were computed first in the material 1--2 frame, then used to form the reduced in-plane orthotropic stiffness matrix $Q$.
+
+Implementation changes relative to Problem 2 involved added orthotropic routines to compute $Q$ and rotate it to global axes for a specified fiber angle $\theta_f$. The rotated matrix $\bar{Q}$ replaced the isotropic $D$ in the same element-level stress relation $\sigma=\bar{Q}\,\varepsilon$, allowing direct comparison against the isotropic baseline under identical load/BC definitions.
+
+Five right-edge traction directions were evaluated ($0^\circ,30^\circ,45^\circ,60^\circ,90^\circ$) with left-edge fixed DOFs, and a fiber-angle sweep $\theta_f\in[0^\circ,90^\circ]$ at $5^\circ$ increments was run for each load direction. This provides a direct stress-based proof of orientation selection instead of a single-angle comparison.
+
+\[
+\begin{aligned}
+E_1 &= 145.848\ \text{GPa} \\
+E_2 &= 15.903\ \text{GPa} \\
+G_{12} &= 4.339\ \text{GPa} \\
+\nu_{12} &= 0.272
+\end{aligned}
+\]
+
+\autoref{fig:p3_orient} plots the stress analysis for varying fiber angles. For uniform traction in the $+x$ direction, fiber angle of $\theta_f\ = 0^\circ$ results in the minimum stress value out of the maximum in $\sigma_x, \sigma_y, \sigma_{vm}$. For arbitrary tractions, fiber angle of $\theta_f\ = 65^\circ$ results in the minimum stress value. Table~\ref{tab:p3_orientation} shows representative values and also demonstrates the trend used for selection.
+
+Using the full $5^\circ$ sweep, the selected recommendations were:
+\begin{itemize}
+    \item For pure $+x$ traction (Case 1): $\theta_f=0^\circ$ minimizes $\max \sigma_{vm}$.
+    \item For arbitrary right-edge tractions (Cases 2--5): minimax orientation $\theta_f=65^\circ$ minimizes worst-case $\max \sigma_{vm}$.
+\end{itemize}
+
 \begin{figure}[!t]
 \centering
 \begin{subfigure}{\linewidth}\centering
-\includegraphics[width=\linewidth]{../figures/panel_composite/case1_orientation_sweep.png}
+\includegraphics[width=\linewidth]{figures/panel_composite/case1_orientation_sweep.png}
 \caption{Case 1 orientation sweep}
 \end{subfigure}
 \begin{subfigure}{\linewidth}\centering
-\includegraphics[width=\linewidth]{../figures/panel_composite/cases2to5_orientation_robustness.png}
+\includegraphics[width=\linewidth]{figures/panel_composite/cases2to5_orientation_robustness.png}
 \caption{Arbitrary traction robustness (Cases 2--5)}
 \end{subfigure}
 \caption{CFRP fiber-angle trade study.}
 \label{fig:p3_orient}
 \end{figure}
 
-\begin{table}[!t]
+\begin{table}[!ht]
 \centering
 \scriptsize
 \caption{Fiber orientation study}
@@ -264,349 +317,512 @@ $\theta_f$ [deg] & \shortstack[c]{+x traction: \\ $\max \sigma_{vm}$ [Pa]} & \sh
 \label{tab:p3_orientation}
 \end{table}
 
-The panel was then reanalyzed as a unidirectional CFRP lamina under plane stress using orthotropic constitutive response \cite{barbero_composite_fea}. Constituents and volume fraction were set from lecture guidance: carbon fiber/epoxy with $V_f=0.60$, $E_f=241$ GPa, $\nu_f=0.2$, $E_m=3.12$ GPa, $\nu_m=0.38$. From Barbero Chapter 6 micromechanics, effective lamina constants were computed first in the material 1--2 frame, then used to form the reduced in-plane orthotropic stiffness matrix $Q$.
-
-Implementation changes relative to Problem 2 were limited to constitutive modeling and orientation handling; mesh generation, quadrature, assembly, and solver flow were retained. Specifically, orthotropic routines were added to compute $Q$ (`orthotropic\_Q\_plane\_stress`) and rotate it to global axes (`rotate\_Qbar\_plane\_stress`) for a specified fiber angle $\theta_f$. The rotated matrix $\bar{Q}$ replaced the isotropic $D$ in the same element-level stress relation $\sigma=\bar{Q}\,\varepsilon$, allowing direct comparison against the isotropic baseline under identical load/BC definitions.
-
-Five right-edge traction directions were evaluated ($0^\circ,30^\circ,45^\circ,60^\circ,90^\circ$) with left-edge fixed DOFs, and a fiber-angle sweep $\theta_f\in[0^\circ,90^\circ]$ at $5^\circ$ increments was run for each load direction. This provides a direct stress-based proof of orientation selection instead of a single-angle comparison.
-
-\[
-\begin{aligned}
-E_1 &= 145.848\ \text{GPa} \\
-E_2 &= 15.903\ \text{GPa} \\
-G_{12} &= 4.339\ \text{GPa} \\
-\nu_{12} &= 0.272
-\end{aligned}
-\]
-
-Table~\ref{tab:p3_orientation} shows representative values and demonstrates the trend used for selection.
-
-Using the full $5^\circ$ sweep, the selected recommendations were:
-\begin{itemize}
-    \item For pure $+x$ traction (Case 1): $\theta_f=0^\circ$ minimizes $\max \sigma_{vm}$.
-    \item For arbitrary right-edge tractions (Cases 2--5): minimax orientation $\theta_f=65^\circ$ minimizes worst-case $\max \sigma_{vm}$.
-\end{itemize}
 
 \FloatBarrier
+% =================================================================================================================================================
 \section*{AI Ethics in Engineering}
-For the assignment ethics component, I prompted AI with predefined geometry and case definitions for the 3D truss and 2D panel models. The request was:
-\begin{quote}
-\small
-Solve Problem 1 (3D direct truss FEM for three load/BC cases, plus setup and deformed-stress plots), Problem 2 (2D Galerkin quad FEM for three cases with $n=\{10,100,1000\}$ meshes, output deflections/stresses and convergence plots), and Problem 3 (CFRP orthotropic panel with traction-direction sweep and $5^\circ$ fiber-angle study to recommend orientation).
-\end{quote}
+I prompted ChatGPT's Codex agent in the VS Code IDE to solve problems 1, 2 and 3. To provide the coding agent with context, I added predefined geometry for the 3D truss (node coordinates, element connectivity), principal dimensions of the 2D panel, and descriptions of three loading cases for problems 1 and 2 in a text file. The following prompt was then used: \newline
+\noindent
+``Solve problem 1:\\
+Given the 3 loading cases described, model the hexagonal frame using the direct method of trusses in 3D. Apply the point loads and boundary conditions defined in each case onto the frame, and solve for deflections and stresses for each case. Create 2 sets of plots for each case: the first should show the undeformed configuration of the 3D truss, labeling boundary conditions and applied loads. The second should show a deformed configuration of the 3D truss with each element colored by stress value.
 
-AI matched my Problem 1 and Problem 2 results (same trends and similar values), but it initially struggled on Problem 3 relative to my interpretation. The first outputs were overly long, relied on many helper functions/print statements, and needed multiple rounds of correction for setup and output formatting. Initial plotting outputs also required iterative tuning.
+\vspace{1em}
+\noindent
+Solve problem 2:\\
+Given the 3 loading cases described and the geometry for the top panel (element 7), solve using the Galerkin FEM approach with quad elements. Output the deflections, stress distributions (with support for returning components s\_x, s\_y, s\_{vonmises}), and maximum stress. For each case, run a mesh with n=10, 100, 1000 elements. Create 3 sets of plots for each case: one of the undeformed geometry with boundary conditions and tractions labeled, one with deformed mesh scaled up to see the difference against the undeformed mesh. Third, contour plots of stress values (sigma\_x, sigma\_y, sigma\_{vonmises}) in the panel. Implement functionality to perform a convergence study for each case comparing maximum stress values for n = 10, 100, 1000 elements.
 
-After follow-up prompts focused on restructuring and visualization details, the plotting quality improved significantly and supported my original analysis conclusions.
+\vspace{1em}
+\noindent
+Solve problem 3:\\
+Given the traction orientations provided, model the panel as CFRP composite following chapter 6 of Barbero's textbook, and slides 23-27 of the project lecture pdf. Functionally, implement capability to model the panel with orthotropic properties from the script written to solve problem 2 with Galerkin FEM. Solve for stresses for each traction direction, and test various fiber angles. Choose the fiber orientation that minimizes stress due to tension in the +x direction, and for arbitrary tractions on the right edge. Implement plotting capability to compare maximum stresses given different fiber orientations in increments of 5 degrees, for the first case (+ x traction) and second case (arbitrary traction directions). This visualization will justify selection of fiber orientation for each case.''
 
-In practice, LLMs should be used as an integrated partner for implementation tasks: coding, refactoring, automation, and postprocessing. They are valuable when the engineer already understands the physics and numerical methods, and then uses AI to accelerate execution. They should not replace engineering intuition, validation, or critical decision-making. The engineer must remain in-the-loop, review assumptions, and avoid black-box use.
+Codex matched my Problem 1 and Problem 2 results (same trends and similar values), but it initially struggled to interpret Problem 3 and returned incorrect results. Its first implementation was functional but overly verbose, with many helper functions and print statements that were not intuitive to read. Multiple follow-up prompts were needed to clarify structure, improve readability, and clean up outputs. Most of that iteration focused on plotting mesh deformation and stress results. Once refined, those plotting tools were highly valuable and supported the conclusions of my analysis. All final plots in this report were generated in Python with Codex assistance.
+
+Codex defaulted to Python, which aligned with my workflow. Through iterative prompting, the scripts evolved into modular code where I learned practical details about vectorization, data structures, and syntax. Compared with the sample MATLAB scripts used early in the course, this architecture separated preprocessing (geometry/properties), solver, postprocessing, and driver logic more cleanly. That made the workflow easier to adapt when changing inputs or re-running focused postprocessing for specific cases.
+
+In conclusion, it is my opinion that LLMs should be used as an integrated partner for implementation tasks: coding, refactoring, automation, and postprocessing. They are valuable when the engineer already understands the physics and numerical methods, and then uses AI to accelerate execution. They should not replace engineering intuition, validation, or critical decision-making. The engineer must remain in-the-loop, review assumptions, and avoid black-box use.
 
 \clearpage
 \onecolumn
 \bibliographystyle{IEEEtran}
-\bibliography{references}
+\bibliography{main}
 
+% ==================================================================================================================================================================
 \clearpage
 \appendix
-\section*{Appendix A: Postprocessing Results}
+\label{sec:appA}
+\section*{Appendix A: AI Article Reflections}
+\subsection*{Reflection 1: Does AI already have human-level intelligence? The evidence is clear}
+The article “Does AI already have human-level intelligence? The evidence is clear” argues that artificial general intelligence is no longer a future possibility, but something that has already arrived. The authors claim that current large language models have shown enough breadth and depth across many cognitive tasks that, by reasonable standards, they should be considered generally intelligent. They support this argument by pointing to performance in areas such as mathematics, coding, scientific reasoning, writing, and human-like conversation. They also argue that many people reject this conclusion only because they keep setting the standard too high, often demanding things from AI that even humans themselves cannot do consistently.
 
-\subsection*{Problem 1: Truss CSV Outputs}
+I think the authors make a strong case in some ways. One of their best points is that intelligence should not mean perfection. No human is perfect across every domain, and no single person can do every cognitive task at an expert level. Because of that, it does not make much sense to say AI must be flawless or universal before we are willing to call it generally intelligent. I also thought their discussion of “breadth” and “depth” was useful. Their definition is not that an intelligent system has to do literally everything, but that it has to show strong performance across many kinds of reasoning and problem-solving. That seems much more realistic. The article also makes a fair point that people often move the goalposts. Once AI can do something that used to be seen as proof of intelligence, critics often decide that task no longer counts.
+
+At the same time, I am not completely convinced by the article’s conclusion. I agree that current AI systems are extremely capable, and clearly much more capable than most people expected only a few years ago. Still, I think the article is a little too quick to treat performance as the same thing as intelligence in the fullest sense. A model can produce strong answers, solve difficult problems, and imitate human conversation, but that does not necessarily mean it understands in the same way humans do. The authors say that human similarity, embodiment, and autonomy are not required for intelligence, and maybe they are right. However, those things still seem important when thinking about what “human-level intelligence” really means. If a system is powerful but fundamentally different in how it operates, then I think it is reasonable to hesitate before saying the problem of AGI is fully solved.
+
+What I found most interesting about the article is not even the label of AGI itself, but the fact that it forces the reader to think more carefully about intelligence. The authors are basically saying that whether or not people are comfortable with the term, these systems now show a level of general-purpose ability that cannot be dismissed as narrow software tools anymore. I think that part is true. AI is already affecting education, research, writing, coding, and decision-making in ways that are too broad to ignore. Even if I am not fully ready to say that current AI has reached human-level intelligence, I do agree that we have crossed into a new category of technology that deserves much more serious attention.
+
+Overall, I think this article is valuable because it challenges both denial and exaggeration. I do not fully accept its central claim, but I do think it proves that older ways of talking about AI are outdated. We are no longer dealing with systems that can only do one narrow task. These models are clearly flexible, surprisingly capable, and already changing how people work and think. Whether that should be called AGI or not is still debatable. Still, the article makes it hard to deny that something major has already happened.
+
+\clearpage
+\subsection*{Reflection 2: Words Without Consequence}
+In “Words Without Consequence,” Deb Roy argues that large language models have changed something deeper than just productivity or access to information. His main point is that human speech has always been connected to consequence. When a person speaks, their words expose them to judgment, shame, trust, blame, or responsibility. LLMs break that connection because they can produce language that sounds sincere, responsible, and thoughtful without any actual speaker standing behind it. They can apologize, reassure, advise, and persuade, but they have nothing at stake in what they say. Roy argues that this is dangerous because it weakens the moral structure that gives language its meaning in the first place.
+
+I found this article convincing because it focuses on something more subtle than whether AI is accurate or useful. A lot of discussion about AI is about cheating, misinformation, or replacing jobs. Roy is writing about something deeper, which is what happens when people get used to language that sounds human but carries no real accountability. His example of chatbots apologizing is especially effective. When a chatbot says “I’m sorry,” the words sound meaningful, but there is no regret, no vulnerability, and no real obligation behind them. That makes the apology hollow, even if it sounds polite or emotionally intelligent. Roy’s point is that once this becomes normal, people may start accepting moral language that is detached from consequence. That seems like a real problem, especially because it happens quietly.
+
+I also liked the way Roy connects language to dignity. He argues that dignity depends partly on speaking in one’s own voice and being bound over time to what one says. Human speech matters because it belongs to someone with a continuous life, a reputation, relationships, and something to lose. That idea stood out to me because it helps explain why AI-generated language can feel strange even when it is fluent. The problem is not only that it may be wrong. The bigger issue is that it is not owned in the same way. Roy gives examples from schools, workplaces, and personal life where people are already starting to outsource things they probably should not: presentations, feedback, apologies, reassurance, and even difficult messages. In each case, the words may still “work,” but the person using them has stepped back from full responsibility.
+
+What makes the article strong is that Roy is not arguing that AI should be thrown away. He admits that these tools are valuable. His point is that efficiency should not be the only thing we care about. If a tool makes it easier to avoid authorship, accountability, or ownership, then something important is being lost even when the result looks successful on the surface. I think that is especially relevant now because AI makes it very easy to produce polished language quickly. The temptation is to treat that as automatically good. But Roy is reminding us that some parts of human communication matter precisely because they take effort, risk, and responsibility. If those disappear, then something important about speech disappears with them.
+
+Overall, I think this article is one of the better critiques of AI because it does not rely on fear or exaggerated predictions. Instead, it points to a real shift that is already happening in ordinary life. People are getting used to words that sound meaningful without being fully owned by anyone. That may seem minor at first, but over time it could affect how we think about apology, care, trust, and responsibility. Roy’s argument made me think that the real danger of AI is not only that it can say the wrong thing. It is that it may train us to care less and less about whether anyone truly stands behind the words at all.
+
+% ==================================================================================================================================================================
+\clearpage
+\appendix
+\label{sec:appB}
+\section*{Appendix B: Postprocessing Results}
+
+\subsection*{Problem 1: Truss CSV Outputs for Displacements and Stresses}
 
 \subsubsection*{Case 1}
 \begin{table}[htbp]
 \centering
 \scriptsize
-\caption{Case 1 nodal displacements from \texttt{case1\_node\_displacements.csv}.}
+\begin{minipage}[t]{0.48\textwidth}
+\centering
+\caption{Case 1 nodal displacements.}
 \begin{tabular}{c c c c c}
 \toprule
-Node & $u_x$ [ft] & $u_y$ [ft] & $u_z$ [ft] & $|u|$ [ft] \\
+Node & $u_x$ [m] & $u_y$ [m] & $u_z$ [m] & $|u|$ [m] \\
 \midrule
-0 & -4.35368518e-24 & -3.57821382e-08 & -2.19911795e-06 & 2.19940904e-06 \\
-1 & 0.00000000e+00 & 0.00000000e+00 & 0.00000000e+00 & 0.00000000e+00 \\
-2 & 0.00000000e+00 & 0.00000000e+00 & 0.00000000e+00 & 0.00000000e+00 \\
-3 & 0.00000000e+00 & 0.00000000e+00 & 0.00000000e+00 & 0.00000000e+00 \\
-4 & 0.00000000e+00 & 0.00000000e+00 & 0.00000000e+00 & 0.00000000e+00 \\
-5 & 0.00000000e+00 & 0.00000000e+00 & 0.00000000e+00 & 0.00000000e+00 \\
-6 & 0.00000000e+00 & 0.00000000e+00 & 0.00000000e+00 & 0.00000000e+00 \\
+0 & -4.354e-24 & -3.578e-08 & -2.199e-06 & 2.199e-06 \\
+1 & 0.000e+00 & 0.000e+00 & 0.000e+00 & 0.000e+00 \\
+2 & 0.000e+00 & 0.000e+00 & 0.000e+00 & 0.000e+00 \\
+3 & 0.000e+00 & 0.000e+00 & 0.000e+00 & 0.000e+00 \\
+4 & 0.000e+00 & 0.000e+00 & 0.000e+00 & 0.000e+00 \\
+5 & 0.000e+00 & 0.000e+00 & 0.000e+00 & 0.000e+00 \\
+6 & 0.000e+00 & 0.000e+00 & 0.000e+00 & 0.000e+00 \\
 \bottomrule
 \end{tabular}
-\end{table}
-
-\begin{table}[htbp]
+\end{minipage}\hfill
+\begin{minipage}[t]{0.48\textwidth}
 \centering
-\scriptsize
-\caption{Case 1 element results from \texttt{case1\_element\_results.csv}.}
+\caption{Case 1 element stresses.}
 \begin{tabular}{c c c c c}
 \toprule
 Element & Node $i$ & Node $j$ & Strain & Stress [Pa] \\
 \midrule
-0 & 0 & 1 & 3.46090694e-08 & 2.42263486e+03 \\
-1 & 0 & 2 & 3.61848257e-08 & 2.53293780e+03 \\
-2 & 0 & 3 & 3.61848257e-08 & 2.53293780e+03 \\
-3 & 0 & 4 & 3.46090694e-08 & 2.42263486e+03 \\
-4 & 0 & 5 & 3.02071947e-08 & 2.11450363e+03 \\
-5 & 0 & 6 & 3.02071947e-08 & 2.11450363e+03 \\
-6 & 1 & 2 & 0.00000000e+00 & 0.00000000e+00 \\
-7 & 2 & 3 & 0.00000000e+00 & 0.00000000e+00 \\
-8 & 3 & 4 & 0.00000000e+00 & 0.00000000e+00 \\
-9 & 4 & 5 & 0.00000000e+00 & 0.00000000e+00 \\
-10 & 5 & 6 & 0.00000000e+00 & 0.00000000e+00 \\
-11 & 6 & 1 & 0.00000000e+00 & 0.00000000e+00 \\
+0 & 0 & 1 & 3.461e-08 & 2.423e+03 \\
+1 & 0 & 2 & 3.618e-08 & 2.533e+03 \\
+2 & 0 & 3 & 3.618e-08 & 2.533e+03 \\
+3 & 0 & 4 & 3.461e-08 & 2.423e+03 \\
+4 & 0 & 5 & 3.021e-08 & 2.115e+03 \\
+5 & 0 & 6 & 3.021e-08 & 2.115e+03 \\
+6 & 1 & 2 & 0.000e+00 & 0.000e+00 \\
+7 & 2 & 3 & 0.000e+00 & 0.000e+00 \\
+8 & 3 & 4 & 0.000e+00 & 0.000e+00 \\
+9 & 4 & 5 & 0.000e+00 & 0.000e+00 \\
+10 & 5 & 6 & 0.000e+00 & 0.000e+00 \\
+11 & 6 & 1 & 0.000e+00 & 0.000e+00 \\
 \bottomrule
 \end{tabular}
+\end{minipage}
 \end{table}
 
 \subsubsection*{Case 2}
 \begin{table}[htbp]
 \centering
 \scriptsize
-\caption{Case 2 nodal displacements from \texttt{case2\_node\_displacements.csv}.}
+\begin{minipage}[t]{0.48\textwidth}
+\centering
+\caption{Case 2 nodal displacements.}
 \begin{tabular}{c c c c c}
 \toprule
-Node & $u_x$ [ft] & $u_y$ [ft] & $u_z$ [ft] & $|u|$ [ft] \\
+Node & $u_x$ [m] & $u_y$ [m] & $u_z$ [m] & $|u|$ [m] \\
 \midrule
-0 & 1.26688509e-06 & 0.00000000e+00 & 5.23155936e-06 & 5.38276984e-06 \\
-1 & 2.53377019e-06 & 0.00000000e+00 & 0.00000000e+00 & 2.53377019e-06 \\
-2 & 1.37726412e-06 & -2.65805646e-07 & 0.00000000e+00 & 1.40267925e-06 \\
-3 & 1.15650607e-06 & -2.65805646e-07 & 0.00000000e+00 & 1.18665872e-06 \\
-4 & 0.00000000e+00 & 0.00000000e+00 & 0.00000000e+00 & 0.00000000e+00 \\
-5 & 1.13473332e-06 & 3.79589440e-07 & 0.00000000e+00 & 1.19653995e-06 \\
-6 & 1.39903687e-06 & 3.79589440e-07 & 0.00000000e+00 & 1.44961798e-06 \\
+0 & 1.267e-06 & 0.000e+00 & 5.232e-06 & 5.383e-06 \\
+1 & 2.534e-06 & 0.000e+00 & 0.000e+00 & 2.534e-06 \\
+2 & 1.377e-06 & -2.658e-07 & 0.000e+00 & 1.403e-06 \\
+3 & 1.157e-06 & -2.658e-07 & 0.000e+00 & 1.187e-06 \\
+4 & 0.000e+00 & 0.000e+00 & 0.000e+00 & 0.000e+00 \\
+5 & 1.135e-06 & 3.796e-07 & 0.000e+00 & 1.197e-06 \\
+6 & 1.399e-06 & 3.796e-07 & 0.000e+00 & 1.450e-06 \\
 \bottomrule
 \end{tabular}
-\end{table}
-
-\begin{table}[htbp]
+\end{minipage}\hfill
+\begin{minipage}[t]{0.48\textwidth}
 \centering
-\scriptsize
-\caption{Case 2 element results from \texttt{case2\_element\_results.csv}.}
+\caption{Case 2 element stresses.}
 \begin{tabular}{c c c c c}
 \toprule
 Element & Node $i$ & Node $j$ & Strain & Stress [Pa] \\
 \midrule
-0 & 0 & 1 & 3.06455606e-07 & 2.14518924e+04 \\
-1 & 0 & 2 & -1.04180168e-07 & -7.29261173e+03 \\
-2 & 0 & 3 & -1.04180168e-07 & -7.29261173e+03 \\
-3 & 0 & 4 & 3.06455606e-07 & 2.14518924e+04 \\
-4 & 0 & 5 & -1.94366844e-07 & -1.36056791e+04 \\
-5 & 0 & 6 & -1.94366844e-07 & -1.36056791e+04 \\
-6 & 1 & 2 & 4.16178375e-08 & 2.91324862e+03 \\
-7 & 2 & 3 & 4.73052963e-08 & 3.31137074e+03 \\
-8 & 3 & 4 & 4.16178375e-08 & 2.91324862e+03 \\
-9 & 4 & 5 & 1.09519567e-07 & 7.66636972e+03 \\
-10 & 5 & 6 & 1.05721420e-07 & 7.40049941e+03 \\
-11 & 6 & 1 & 1.09519567e-07 & 7.66636972e+03 \\
+0 & 0 & 1 & 3.065e-07 & 2.145e+04 \\
+1 & 0 & 2 & -1.042e-07 & -7.293e+03 \\
+2 & 0 & 3 & -1.042e-07 & -7.293e+03 \\
+3 & 0 & 4 & 3.065e-07 & 2.145e+04 \\
+4 & 0 & 5 & -1.944e-07 & -1.361e+04 \\
+5 & 0 & 6 & -1.944e-07 & -1.361e+04 \\
+6 & 1 & 2 & 4.162e-08 & 2.913e+03 \\
+7 & 2 & 3 & 4.731e-08 & 3.311e+03 \\
+8 & 3 & 4 & 4.162e-08 & 2.913e+03 \\
+9 & 4 & 5 & 1.095e-07 & 7.666e+03 \\
+10 & 5 & 6 & 1.057e-07 & 7.400e+03 \\
+11 & 6 & 1 & 1.095e-07 & 7.666e+03 \\
 \bottomrule
 \end{tabular}
+\end{minipage}
 \end{table}
 
 \subsubsection*{Case 3}
 \begin{table}[htbp]
 \centering
 \scriptsize
-\caption{Case 3 nodal displacements from \texttt{case3\_node\_displacements.csv}.}
+\begin{minipage}[t]{0.48\textwidth}
+\centering
+\caption{Case 3 nodal displacements.}
 \begin{tabular}{c c c c c}
 \toprule
-Node & $u_x$ [ft] & $u_y$ [ft] & $u_z$ [ft] & $|u|$ [ft] \\
+Node & $u_x$ [m] & $u_y$ [m] & $u_z$ [m] & $|u|$ [m] \\
 \midrule
-0 & 0.00000000e+00 & 0.00000000e+00 & 1.77724435e-04 & 1.77724435e-04 \\
-1 & 0.00000000e+00 & 0.00000000e+00 & 2.16008606e-04 & 2.16008606e-04 \\
-2 & 0.00000000e+00 & 0.00000000e+00 & 2.28639249e-04 & 2.28639249e-04 \\
-3 & 0.00000000e+00 & 0.00000000e+00 & 2.28639249e-04 & 2.28639249e-04 \\
-4 & 0.00000000e+00 & 0.00000000e+00 & 2.16008606e-04 & 2.16008606e-04 \\
-5 & 0.00000000e+00 & 0.00000000e+00 & 0.00000000e+00 & 0.00000000e+00 \\
-6 & 0.00000000e+00 & 0.00000000e+00 & 2.07345175e-04 & 2.07345175e-04 \\
+0 & 0.000e+00 & 0.000e+00 & 1.777e-04 & 1.777e-04 \\
+1 & 0.000e+00 & 0.000e+00 & 2.160e-04 & 2.160e-04 \\
+2 & 0.000e+00 & 0.000e+00 & 2.286e-04 & 2.286e-04 \\
+3 & 0.000e+00 & 0.000e+00 & 2.286e-04 & 2.286e-04 \\
+4 & 0.000e+00 & 0.000e+00 & 2.160e-04 & 2.160e-04 \\
+5 & 0.000e+00 & 0.000e+00 & 0.000e+00 & 0.000e+00 \\
+6 & 0.000e+00 & 0.000e+00 & 2.073e-04 & 2.073e-04 \\
 \bottomrule
 \end{tabular}
-\end{table}
-
-\begin{table}[htbp]
+\end{minipage}\hfill
+\begin{minipage}[t]{0.48\textwidth}
 \centering
-\scriptsize
-\caption{Case 3 element results from \texttt{case3\_element\_results.csv}.}
+\caption{Case 3 element stresses.}
 \begin{tabular}{c c c c c}
 \toprule
 Element & Node $i$ & Node $j$ & Strain & Stress [Pa] \\
 \midrule
-0 & 0 & 1 & 6.02504975e-07 & 4.21753482e+04 \\
-1 & 0 & 2 & 6.62575864e-07 & 4.63803105e+04 \\
-2 & 0 & 3 & 6.62575864e-07 & 4.63803105e+04 \\
-3 & 0 & 4 & 6.02504975e-07 & 4.21753482e+04 \\
-4 & 0 & 5 & -3.31872122e-06 & -2.32310485e+05 \\
-5 & 0 & 6 & 5.53120203e-07 & 3.87184142e+04 \\
-6 & 1 & 2 & 0.00000000e+00 & 0.00000000e+00 \\
-7 & 2 & 3 & 0.00000000e+00 & 0.00000000e+00 \\
-8 & 3 & 4 & 0.00000000e+00 & 0.00000000e+00 \\
-9 & 4 & 5 & 0.00000000e+00 & 0.00000000e+00 \\
-10 & 5 & 6 & 0.00000000e+00 & 0.00000000e+00 \\
-11 & 6 & 1 & 0.00000000e+00 & 0.00000000e+00 \\
+0 & 0 & 1 & 6.025e-07 & 4.218e+04 \\
+1 & 0 & 2 & 6.626e-07 & 4.638e+04 \\
+2 & 0 & 3 & 6.626e-07 & 4.638e+04 \\
+3 & 0 & 4 & 6.025e-07 & 4.218e+04 \\
+4 & 0 & 5 & -3.319e-06 & -2.323e+05 \\
+5 & 0 & 6 & 5.531e-07 & 3.872e+04 \\
+6 & 1 & 2 & 0.000e+00 & 0.000e+00 \\
+7 & 2 & 3 & 0.000e+00 & 0.000e+00 \\
+8 & 3 & 4 & 0.000e+00 & 0.000e+00 \\
+9 & 4 & 5 & 0.000e+00 & 0.000e+00 \\
+10 & 5 & 6 & 0.000e+00 & 0.000e+00 \\
+11 & 6 & 1 & 0.000e+00 & 0.000e+00 \\
 \bottomrule
 \end{tabular}
+\end{minipage}
 \end{table}
 
+% ================================================================================================================================
 \clearpage
 \subsection*{Problem 2: Panel Plot Sets (Cases 1--3)}
 
 \subsubsection*{Case 1}
 \begin{figure}[htbp]
 \centering
+% Row 1: (a) undeformed
 \begin{subfigure}{0.32\textwidth}\centering
-\includegraphics[width=\linewidth]{../figures/panel/case1_n10_undeformed.png}
-\caption{$n=10$ undeformed}
+\includegraphics[width=\linewidth]{figures/panel/case1_n10_undeformed.png}
+\caption*{}
 \end{subfigure}
 \begin{subfigure}{0.32\textwidth}\centering
-\includegraphics[width=\linewidth]{../figures/panel/case1_n10_deformed.png}
-\caption{$n=10$ deformed}
+\includegraphics[width=\linewidth]{figures/panel/case1_n100_undeformed.png}
+\caption*{}
 \end{subfigure}
 \begin{subfigure}{0.32\textwidth}\centering
-\includegraphics[width=\linewidth]{../figures/panel/case1_n10_stress_stack.png}
-\caption{$n=10$ stress stack}
+\includegraphics[width=\linewidth]{figures/panel/case1_n1000_undeformed.png}
+\caption*{}
 \end{subfigure}
-\caption{Case 1 panel results, $n=10$.}
-\end{figure}
 
-\begin{figure}[htbp]
-\centering
-\begin{subfigure}{0.32\textwidth}\centering
-\includegraphics[width=\linewidth]{../figures/panel/case1_n100_undeformed.png}
-\caption{$n=100$ undeformed}
-\end{subfigure}
-\begin{subfigure}{0.32\textwidth}\centering
-\includegraphics[width=\linewidth]{../figures/panel/case1_n100_deformed.png}
-\caption{$n=100$ deformed}
-\end{subfigure}
-\begin{subfigure}{0.32\textwidth}\centering
-\includegraphics[width=\linewidth]{../figures/panel/case1_n100_stress_stack.png}
-\caption{$n=100$ stress stack}
-\end{subfigure}
-\caption{Case 1 panel results, $n=100$.}
-\end{figure}
+\vspace{0.5em}
+\textbf{Undeformed}\par\vspace{0.3em}
 
-\begin{figure}[htbp]
-\centering
+% Row 2: (b) deformed
 \begin{subfigure}{0.32\textwidth}\centering
-\includegraphics[width=\linewidth]{../figures/panel/case1_n1000_undeformed.png}
-\caption{$n=1000$ undeformed}
+\includegraphics[width=\linewidth]{figures/panel/case1_n10_deformed.png}
+\caption*{}
 \end{subfigure}
 \begin{subfigure}{0.32\textwidth}\centering
-\includegraphics[width=\linewidth]{../figures/panel/case1_n1000_deformed.png}
-\caption{$n=1000$ deformed}
+\includegraphics[width=\linewidth]{figures/panel/case1_n100_deformed.png}
+\caption*{}
 \end{subfigure}
 \begin{subfigure}{0.32\textwidth}\centering
-\includegraphics[width=\linewidth]{../figures/panel/case1_n1000_stress_stack.png}
-\caption{$n=1000$ stress stack}
+\includegraphics[width=\linewidth]{figures/panel/case1_n1000_deformed.png}
+\caption*{}
 \end{subfigure}
-\caption{Case 1 panel results, $n=1000$.}
+
+\vspace{0.5em}
+\textbf{Deformed}\par\vspace{0.3em}
+
+% Row 3: (c) stress stack
+\begin{subfigure}{0.32\textwidth}\centering
+\includegraphics[width=\linewidth]{figures/panel/case1_n10_stress_stack.png}
+\caption{$n=10$}
+\end{subfigure}
+\begin{subfigure}{0.32\textwidth}\centering
+\includegraphics[width=\linewidth]{figures/panel/case1_n100_stress_stack.png}
+\caption{$n=100$}
+\end{subfigure}
+\begin{subfigure}{0.32\textwidth}\centering
+\includegraphics[width=\linewidth]{figures/panel/case1_n1000_stress_stack.png}
+\caption{$n=1000$}
+\end{subfigure}
+
+\vspace{0.5em}
+\textbf{Stress Contours ($\sigma_x, \sigma_y, \sigma_{vm}$})
+
+\caption{Case 1 panel results for mesh levels $n=10,100,1000$ (columns) and result type (rows).}
 \end{figure}
 
 \clearpage
 \subsubsection*{Case 2}
 \begin{figure}[htbp]
 \centering
+% Row 1: (a) undeformed
 \begin{subfigure}{0.32\textwidth}\centering
-\includegraphics[width=\linewidth]{../figures/panel/case2_n10_undeformed.png}
-\caption{$n=10$ undeformed}
+\includegraphics[width=\linewidth]{figures/panel/case2_n10_undeformed.png}
+\caption*{}
 \end{subfigure}
 \begin{subfigure}{0.32\textwidth}\centering
-\includegraphics[width=\linewidth]{../figures/panel/case2_n10_deformed.png}
-\caption{$n=10$ deformed}
+\includegraphics[width=\linewidth]{figures/panel/case2_n100_undeformed.png}
+\caption*{}
 \end{subfigure}
 \begin{subfigure}{0.32\textwidth}\centering
-\includegraphics[width=\linewidth]{../figures/panel/case2_n10_stress_stack.png}
-\caption{$n=10$ stress stack}
+\includegraphics[width=\linewidth]{figures/panel/case2_n1000_undeformed.png}
+\caption*{}
 \end{subfigure}
-\caption{Case 2 panel results, $n=10$.}
-\end{figure}
 
-\begin{figure}[htbp]
-\centering
-\begin{subfigure}{0.32\textwidth}\centering
-\includegraphics[width=\linewidth]{../figures/panel/case2_n100_undeformed.png}
-\caption{$n=100$ undeformed}
-\end{subfigure}
-\begin{subfigure}{0.32\textwidth}\centering
-\includegraphics[width=\linewidth]{../figures/panel/case2_n100_deformed.png}
-\caption{$n=100$ deformed}
-\end{subfigure}
-\begin{subfigure}{0.32\textwidth}\centering
-\includegraphics[width=\linewidth]{../figures/panel/case2_n100_stress_stack.png}
-\caption{$n=100$ stress stack}
-\end{subfigure}
-\caption{Case 2 panel results, $n=100$.}
-\end{figure}
+\vspace{0.5em}
+\textbf{Undeformed}\par\vspace{0.3em}
 
-\begin{figure}[htbp]
-\centering
+% Row 2: (b) deformed
 \begin{subfigure}{0.32\textwidth}\centering
-\includegraphics[width=\linewidth]{../figures/panel/case2_n1000_undeformed.png}
-\caption{$n=1000$ undeformed}
+\includegraphics[width=\linewidth]{figures/panel/case2_n10_deformed.png}
+\caption*{}
 \end{subfigure}
 \begin{subfigure}{0.32\textwidth}\centering
-\includegraphics[width=\linewidth]{../figures/panel/case2_n1000_deformed.png}
-\caption{$n=1000$ deformed}
+\includegraphics[width=\linewidth]{figures/panel/case2_n100_deformed.png}
+\caption*{}
 \end{subfigure}
 \begin{subfigure}{0.32\textwidth}\centering
-\includegraphics[width=\linewidth]{../figures/panel/case2_n1000_stress_stack.png}
-\caption{$n=1000$ stress stack}
+\includegraphics[width=\linewidth]{figures/panel/case2_n1000_deformed.png}
+\caption*{}
 \end{subfigure}
-\caption{Case 2 panel results, $n=1000$.}
+
+\vspace{0.5em}
+\textbf{Deformed}\par\vspace{0.3em}
+
+% Row 3: (c) stress stack
+\begin{subfigure}{0.32\textwidth}\centering
+\includegraphics[width=\linewidth]{figures/panel/case2_n10_stress_stack.png}
+\caption{$n=10$}
+\end{subfigure}
+\begin{subfigure}{0.32\textwidth}\centering
+\includegraphics[width=\linewidth]{figures/panel/case2_n100_stress_stack.png}
+\caption{$n=100$}
+\end{subfigure}
+\begin{subfigure}{0.32\textwidth}\centering
+\includegraphics[width=\linewidth]{figures/panel/case2_n1000_stress_stack.png}
+\caption{$n=1000$}
+\end{subfigure}
+
+\vspace{0.5em}
+\textbf{Stress Contours ($\sigma_x, \sigma_y, \sigma_{vm}$})
+
+\caption{Case 2 panel results for mesh levels $n=10,100,1000$ (columns) and result type (rows).}
 \end{figure}
 
 \clearpage
 \subsubsection*{Case 3}
 \begin{figure}[htbp]
 \centering
+% Row 1: (a) undeformed
 \begin{subfigure}{0.32\textwidth}\centering
-\includegraphics[width=\linewidth]{../figures/panel/case3_n10_undeformed.png}
-\caption{$n=10$ undeformed}
+\includegraphics[width=\linewidth]{figures/panel/case3_n10_undeformed.png}
+\caption*{}
 \end{subfigure}
 \begin{subfigure}{0.32\textwidth}\centering
-\includegraphics[width=\linewidth]{../figures/panel/case3_n10_deformed.png}
-\caption{$n=10$ deformed}
+\includegraphics[width=\linewidth]{figures/panel/case3_n100_undeformed.png}
+\caption*{}
 \end{subfigure}
 \begin{subfigure}{0.32\textwidth}\centering
-\includegraphics[width=\linewidth]{../figures/panel/case3_n10_stress_stack.png}
-\caption{$n=10$ stress stack}
+\includegraphics[width=\linewidth]{figures/panel/case3_n1000_undeformed.png}
+\caption*{}
 \end{subfigure}
-\caption{Case 3 panel results, $n=10$.}
+
+\vspace{0.5em}
+\textbf{Undeformed}\par\vspace{0.3em}
+
+% Row 2: (b) deformed
+\begin{subfigure}{0.32\textwidth}\centering
+\includegraphics[width=\linewidth]{figures/panel/case3_n10_deformed.png}
+\caption*{}
+\end{subfigure}
+\begin{subfigure}{0.32\textwidth}\centering
+\includegraphics[width=\linewidth]{figures/panel/case3_n100_deformed.png}
+\caption*{}
+\end{subfigure}
+\begin{subfigure}{0.32\textwidth}\centering
+\includegraphics[width=\linewidth]{figures/panel/case3_n1000_deformed.png}
+\caption*{}
+\end{subfigure}
+
+\vspace{0.5em}
+\textbf{(Deformed}\par\vspace{0.3em}
+
+% Row 3: (c) stress stack
+\begin{subfigure}{0.32\textwidth}\centering
+\includegraphics[width=\linewidth]{figures/panel/case3_n10_stress_stack.png}
+\caption{$n=10$}
+\end{subfigure}
+\begin{subfigure}{0.32\textwidth}\centering
+\includegraphics[width=\linewidth]{figures/panel/case3_n100_stress_stack.png}
+\caption{$n=100$}
+\end{subfigure}
+\begin{subfigure}{0.32\textwidth}\centering
+\includegraphics[width=\linewidth]{figures/panel/case3_n1000_stress_stack.png}
+\caption{$n=1000$}
+\end{subfigure}
+
+\vspace{0.5em}
+\textbf{Stress Contours ($\sigma_x, \sigma_y, \sigma_{vm}$})
+
+\caption{Case 3 panel results for mesh levels $n=10,100,1000$ (columns) and result type (rows).}
 \end{figure}
 
-\begin{figure}[htbp]
-\centering
-\begin{subfigure}{0.32\textwidth}\centering
-\includegraphics[width=\linewidth]{../figures/panel/case3_n100_undeformed.png}
-\caption{$n=100$ undeformed}
-\end{subfigure}
-\begin{subfigure}{0.32\textwidth}\centering
-\includegraphics[width=\linewidth]{../figures/panel/case3_n100_deformed.png}
-\caption{$n=100$ deformed}
-\end{subfigure}
-\begin{subfigure}{0.32\textwidth}\centering
-\includegraphics[width=\linewidth]{../figures/panel/case3_n100_stress_stack.png}
-\caption{$n=100$ stress stack}
-\end{subfigure}
-\caption{Case 3 panel results, $n=100$.}
-\end{figure}
 
-\begin{figure}[htbp]
-\centering
-\begin{subfigure}{0.32\textwidth}\centering
-\includegraphics[width=\linewidth]{../figures/panel/case3_n1000_undeformed.png}
-\caption{$n=1000$ undeformed}
-\end{subfigure}
-\begin{subfigure}{0.32\textwidth}\centering
-\includegraphics[width=\linewidth]{../figures/panel/case3_n1000_deformed.png}
-\caption{$n=1000$ deformed}
-\end{subfigure}
-\begin{subfigure}{0.32\textwidth}\centering
-\includegraphics[width=\linewidth]{../figures/panel/case3_n1000_stress_stack.png}
-\caption{$n=1000$ stress stack}
-\end{subfigure}
-\caption{Case 3 panel results, $n=1000$.}
-\end{figure}
+% ===================================================================================================================================
+\clearpage
+\appendix
+\label{sec:appC}
+\section*{Appendix C: MATLAB Code}
+
+\lstinputlisting[
+  language=Matlab,
+  linewidth=\linewidth,
+  caption={Problem 1 MATLAB Code},
+  label={lst:p1matlab}
+]{code/problem1_matlab.m}
 
 \clearpage
-\section*{Appendix B: Code Listings}
-This appendix is intentionally left blank for code listings to be inserted.
+\lstinputlisting[
+  language=Matlab,
+  linewidth=\linewidth,
+  caption={Problem 2 MATLAB Code},
+  label={lst:p2matlab}
+]{code/problem2_matlab.m}
+
+\clearpage
+\lstinputlisting[
+  language=Matlab,
+  linewidth=\linewidth,
+  caption={Problem 3 MATLAB Code},
+  label={lst:p3matlab}
+]{code/problem3_matlab.m}
+
+% ==================================================================================================================================================================
+\clearpage
+\appendix
+\section*{Appendix D: Python Code, AI-Assisted}
+\label{sec:appD}
+\subsection*{Problem 1 Scripts}
+
+\lstinputlisting[
+  language=python,      
+  linewidth=1.0\linewidth,
+  caption={hex geometry script},
+  label=lst:hexgeo,
+  % basicstyle=\tiny,
+]{code/hex_geometry.py}
+
+\clearpage
+\lstinputlisting[
+  language=python,      
+  linewidth=1.0\linewidth,
+  caption={truss solver script},
+  label=lst:trusssolver,
+  % basicstyle=\tiny,
+]{code/truss3d_solver.py}
+
+\clearpage
+\lstinputlisting[
+  language=python,      
+  linewidth=1.0\linewidth,
+  caption={postproc truss3d script},
+  label=lst:postproctruss,
+  % basicstyle=\tiny,
+]{code/postproc_truss3d.py}
+
+\clearpage
+\lstinputlisting[
+  language=python,      
+  linewidth=1.0\linewidth,
+  caption={problem1 driver script},
+  label=lst:p1py,
+  % basicstyle=\tiny,
+]{code/problem1.py}
+
+% ----------------------------------
+\clearpage
+\subsection*{Problem 2 Scripts}
+\lstinputlisting[
+  language=python,      
+  linewidth=1.0\linewidth,
+  caption={panel geometry script},
+  label=lst:panelgeom,
+  % basicstyle=\tiny,
+]{code/panel_geometry.py}
+
+\clearpage
+\lstinputlisting[
+  language=python,      
+  linewidth=1.0\linewidth,
+  caption={galerkin solver script},
+  label=lst:galerkinsolver,
+  % basicstyle=\tiny,
+]{code/galerkinFEM_quad.py}
+
+\clearpage
+\lstinputlisting[
+  language=python,      
+  linewidth=1.0\linewidth,
+  caption={postproc galerkin script},
+  label=lst:postprocgalerkin,
+  % basicstyle=\tiny,
+]{code/postproc\_galerkinFEM.py}
+
+\clearpage
+\lstinputlisting[
+  language=python,      
+  linewidth=1.0\linewidth,
+  caption={problem2 driver script},
+  label=lst:p2py,
+  % basicstyle=\tiny,
+]{code/problem2.py}
+
+% ----------------------------------
+\clearpage
+\subsection*{Problem 3 Scripts}
+\lstinputlisting[
+  language=python,      
+  linewidth=1.0\linewidth,
+  caption={cfrp lamina script},
+  label=lst:cfrp,
+  % basicstyle=\tiny,
+]{code/cfrp_lamina.py}
+
+\clearpage
+\lstinputlisting[
+  language=python,      
+  linewidth=1.0\linewidth,
+  caption={problem3 driver script},
+  label=lst:p3py,
+  % basicstyle=\tiny,
+]{code/problem3.py}
 
 \end{document}
